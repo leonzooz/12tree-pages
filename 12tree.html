@@ -1,0 +1,2412 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>12Tree - 動態Graph - Dispatch</title>
+  <script src="gsap.min.js"></script>
+  <script src="skills.js"></script>
+  <style>
+    :root {
+      --color-bg: #F5F0E8;
+      --surface: #F5F0E8;
+      --surface-light: #ffffff;
+      --shadow-dark: #d1cdc6;
+      --shadow-light: #ffffff;
+      --text-primary: #1B3A5C;
+      --text-secondary: #2C3E50;
+      --text-tertiary: #5D6D7E;
+      --text-muted: #8B95A5;
+      --accent-primary: #1B3A5C;
+      --accent-orange: #F29423;
+      --accent-blue: #2478D2;
+      --accent-green: #27AE60;
+      --accent-red: #E74C3C;
+      --line-soft: #E3DDD3;
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --space-8: 32px;
+      --space-10: 40px;
+      --space-12: 48px;
+      --space-16: 64px;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --radius-xl: 24px;
+      --radius-full: 9999px;
+      --shadow-raised: 8px 8px 16px var(--shadow-dark), -8px -8px 16px var(--shadow-light);
+      --shadow-raised-hover: 10px 10px 20px var(--shadow-dark), -10px -10px 20px var(--shadow-light);
+      --shadow-pressed: inset 5px 5px 10px var(--shadow-dark), inset -5px -5px 10px var(--shadow-light);
+      --shadow-sunken: inset 6px 6px 12px var(--shadow-dark), inset -6px -6px 12px var(--shadow-light);
+      --shadow-soft: 4px 4px 10px rgba(209,205,198,.82), -4px -4px 10px rgba(255,255,255,.92);
+      --ink: var(--text-primary);
+      --list: var(--text-secondary);
+      --soft: var(--text-tertiary);
+      --bg: var(--color-bg);
+      --bg-alt: var(--surface);
+      --card: var(--surface);
+      --line: var(--line-soft);
+      --warm: var(--accent-orange);
+      --warm-ink: #9D5A12;
+      --cool: var(--accent-blue);
+      --cool-ink: #1B3A5C;
+      --red: var(--accent-red);
+      --green: var(--accent-green);
+      --spine: #B9B0A4;
+      --lg: #8B95A5; --lg-ink: #5D6D7E;
+      --ls: #2478D2; --ls-ink: #1B3A5C;
+      --shadow: var(--shadow-raised);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --ink: #e8eaed;
+        --list: #c3c8cf;
+        --soft: #8f98a3;
+        --bg: #14161a;
+        --bg-alt: #191d22;
+        --card: #1e2228;
+        --line: #2c313a;
+        --warm: #f0a13c;
+        --warm-ink: #f2a64a;
+        --cool: #4d94e8;
+        --cool-ink: #6ba8ef;
+        --red: #e0655f;
+        --spine: #3a414c;
+        --lg: #7d8794; --lg-ink: #b9c1cb;
+        --ls: #67819e; --ls-ink: #a9bfd8;
+        --shadow: 0 4px 10px rgba(0,0,0,.4);
+      }
+    }
+    :root[data-theme="dark"] {
+      --ink: #e8eaed;
+      --list: #c3c8cf;
+      --soft: #8f98a3;
+      --bg: #14161a;
+      --bg-alt: #191d22;
+      --card: #1e2228;
+      --line: #2c313a;
+      --warm: #f0a13c;
+      --warm-ink: #f2a64a;
+      --cool: #4d94e8;
+      --cool-ink: #6ba8ef;
+      --red: #e0655f;
+      --spine: #3a414c;
+      --lg: #7d8794; --lg-ink: #b9c1cb;
+      --ls: #67819e; --ls-ink: #a9bfd8;
+      --shadow: 0 4px 10px rgba(0,0,0,.4);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--ink);
+      font-family: "Segoe UI", Arial, "Noto Sans TC", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .shell { max-width: 1720px; margin: 0 auto; padding: 18px 20px 40px; }
+
+    /* ---- header ---- */
+    header { display: flex; align-items: center; flex-wrap: wrap; row-gap: 10px; gap: 18px; margin-bottom: 12px; }
+    h1 { margin: 0; font-size: clamp(15px, 2.3vw, 20px); font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--ink); white-space: nowrap; }
+    .brandline { display: inline-flex; align-items: center; gap: 8px; }
+    .brand-refresh {
+      border: 1px solid var(--warm); background: var(--card); color: var(--warm-ink);
+      font: inherit; font-weight: 900; letter-spacing: .08em; text-transform: none;
+      padding: 5px 10px; border-radius: 8px; cursor: pointer; box-shadow: var(--shadow);
+    }
+    .brand-refresh:hover { background: color-mix(in srgb, var(--warm) 10%, var(--card)); }
+    .brand-refresh:disabled { opacity: .55; cursor: not-allowed; }
+    .date-picker {
+      border: 1px solid var(--line); background: var(--card); color: var(--ink);
+      font: inherit; font-size: 12px; font-weight: 800; padding: 5px 8px; border-radius: 8px;
+      box-shadow: var(--shadow); color-scheme: light;
+    }
+    [data-theme="dark"] .date-picker { color-scheme: dark; }
+    .info-btn {
+      border: 1px solid var(--line); background: var(--card); color: var(--list);
+      font: inherit; font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 999px;
+      cursor: pointer; box-shadow: var(--shadow); display: inline-flex; align-items: center; gap: 6px;
+      white-space: nowrap; flex: none;
+    }
+    .info-btn:hover { border-color: var(--soft); }
+    .api-status { gap: 7px; }
+    .api-status::before { content: ''; width: 7px; height: 7px; border-radius: 999px; background: var(--red); box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 18%, transparent); }
+    .api-status.on::before { background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent); }
+    .api-status.pending::before { background: var(--warm); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warm) 18%, transparent); }
+
+    /* ---- 框架邊界設定面板（標題旁緊湊版）---- */
+    .settings {
+      display: flex; align-items: center; flex-wrap: nowrap; gap: 20px;
+      flex: 1 1 860px; min-width: 860px; padding: 8px 16px;
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+      box-shadow: var(--shadow); font-size: 11px; color: var(--list);
+    }
+    .settings .handle {
+      display: flex; align-items: center; gap: 7px; white-space: nowrap;
+      font-size: 11.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+      color: var(--ink); user-select: none;
+    }
+    .settings .row { display: grid; grid-template-columns: 44px 84px 38px; align-items: center; gap: 8px; }
+    .settings .row .name { font-weight: 600; color: var(--list); white-space: nowrap; }
+    .settings .row .val { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 700; }
+    input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 4px; background: var(--line); outline: none; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px; border-radius: 999px; background: var(--sc, var(--ink)); border: 2px solid var(--card); box-shadow: 0 1px 4px rgba(0,0,0,.3); cursor: pointer; }
+    input[type=range]::-moz-range-thumb { width: 11px; height: 11px; border-radius: 999px; background: var(--sc, var(--ink)); border: 2px solid var(--card); cursor: pointer; }
+    .settings .note { margin-left: auto; font-size: 10px; color: var(--soft); line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+/* ---- main: agent side bar + chart ---- */
+    .main { display: flex; gap: 14px; align-items: flex-start; margin-top: 6px; }
+    .side {
+      width: 216px; flex: 0 0 216px; height: 640px; overflow: visible;
+      border: 1px solid var(--line); border-radius: 14px; background: var(--bg-alt);
+      padding: 8px; display: grid; gap: 5px; align-content: start;
+    }
+    .side .side-head { font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--soft); padding: 2px 4px 2px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+    .cfgbar {
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+      margin: 0 0 12px; padding: 8px 14px;
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow);
+    }
+    .cfgbar .cfg-title { font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--soft); margin-right: 4px; }
+    .cfg-row { display: flex; align-items: center; gap: 4px; }
+    .cfg-pill { border: 1px solid var(--line); background: var(--card); color: var(--list); font: inherit; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+    .cfg-pill:hover { border-color: var(--soft); }
+    .cfg-pill.active { background: var(--ink); color: var(--bg); border-color: transparent; }
+    .cfg-add {
+      width: 26px; height: 26px; border: 1px dashed var(--line); background: none; color: var(--soft);
+      font: inherit; font-size: 15px; font-weight: 700; border-radius: 999px; cursor: pointer;
+      display: grid; place-items: center; padding: 0;
+    }
+    .cfg-add:hover { color: var(--ink); border-color: var(--ink); }
+    .cfg-edit {
+      border: 1px solid transparent; background: none; color: var(--soft);
+      width: 20px; height: 20px; border-radius: 6px; cursor: pointer; font-size: 11px; padding: 0; flex: 0 0 20px;
+      display: grid; place-items: center;
+    }
+    .cfg-edit:hover { border-color: var(--line); color: var(--ink); }
+    .cfg-input {
+      border: 1px solid var(--cool); background: var(--bg-alt); color: var(--ink);
+      font: inherit; font-size: 11px; padding: 4px 10px; border-radius: 999px; outline: none;
+    }
+    .gear {
+      border: 1px solid var(--line); background: var(--card); color: var(--list);
+      width: 22px; height: 22px; border-radius: 999px; cursor: pointer; font-size: 11px; line-height: 1;
+      display: grid; place-items: center; padding: 0; flex: 0 0 22px;
+    }
+    .gear:hover { border-color: var(--soft); }
+    .agent-row .am { font-size: 10px; font-weight: 800; color: var(--surface); border-radius: 999px; padding: 1.5px 8px; white-space: nowrap; }
+
+    /* ---- Skills drawer（右側滑出）---- */
+    .drawer-mask { position: fixed; inset: 0; z-index: 90; background: rgba(20,24,28,.35); opacity: 0; pointer-events: none; transition: opacity .2s ease; }
+    .drawer-mask.open { opacity: 1; pointer-events: auto; }
+    .drawer {
+      position: fixed; top: 0; right: 0; bottom: 0; z-index: 95; width: 340px; max-width: 90vw;
+      background: var(--card); border-left: 1px solid var(--line); box-shadow: var(--shadow-raised);
+      transform: translateX(100%); transition: transform .28s cubic-bezier(.32,.72,0,1);
+      display: flex; flex-direction: column; padding: 18px 18px 20px;
+    }
+    .drawer.open { transform: none; }
+    .drawer-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .drawer-head h3 { margin: 0; font-size: 15px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); }
+    .drawer-head .gear { font-size: 12px; }
+    .skill-list { flex: 1; overflow-y: auto; display: grid; gap: 7px; align-content: start; }
+    .skill-item {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--bg-alt);
+    }
+    .skill-item .si { min-width: 0; }
+    .skill-item .si .sn { font-size: 12.5px; font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .skill-item .si .su { font-size: 10px; color: var(--soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 240px; }
+    .skill-item .rm {
+      border: 1px solid var(--line); background: var(--card); color: var(--soft);
+      font: inherit; font-size: 11px; width: 24px; height: 24px; border-radius: 999px; cursor: pointer; flex: 0 0 24px;
+      display: grid; place-items: center; padding: 0;
+    }
+    .skill-item .rm:hover { color: var(--red); border-color: var(--red); }
+    .skill-form { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 8px; }
+    .skill-form input {
+      border: 1px solid var(--line); background: var(--bg-alt); color: var(--ink);
+      font: inherit; font-size: 12.5px; padding: 8px 10px; border-radius: 8px; outline: none;
+    }
+    .skill-form input:focus { border-color: var(--cool); }
+    .skill-form input::placeholder { color: var(--soft); }
+    .skill-form .add-btn {
+      border: none; background: var(--ink); color: var(--bg); font: inherit; font-size: 12.5px; font-weight: 700;
+      padding: 9px; border-radius: 8px; cursor: pointer;
+    }
+    .skill-form .add-btn:hover { opacity: .9; }
+    .skill-form .add-btn:active, .skill-item .rm:active { transform: scale(.96); }
+    .skill-foot { font-size: 10.5px; color: var(--soft); margin-top: 8px; line-height: 1.5; }
+    .export-btn { width: 100%; margin-top: 10px; background: var(--cool); color: var(--surface); }
+    .export-btn:hover { opacity: .92; }
+
+    /* ---- 標籤彙總列（header 下、Agent 列表上）---- */
+    .tagstrip {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      margin: 0 0 12px; padding: 8px 14px;
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow);
+    }
+    .tagstrip-title { font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--soft); }
+    .tagstrip-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+    .tag-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      border: 1px solid var(--cool); background: color-mix(in srgb, var(--cool) 10%, var(--card));
+      color: var(--cool-ink); font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2.5px 10px; cursor: pointer;
+      transition: all .15s ease;
+    }
+    .tag-pill:hover { border-color: var(--cool-ink); }
+    .tag-pill.on { background: var(--cool); color: var(--surface); }
+    .tag-pill .cnt { opacity: .7; font-weight: 600; }
+    .tag-empty { font-size: 11px; color: var(--soft); }
+    .tagdim { opacity: .25; }
+    .gnode.tagdim { opacity: .18; }
+    .skill-empty { font-size: 11.5px; color: var(--soft); text-align: center; padding: 26px 10px; line-height: 1.6; }
+
+    /* ---- Agent 功能彈窗（可移動 + skill 標籤）---- */
+    .apop {
+      position: fixed; z-index: 85; width: 300px;
+      background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+      box-shadow: var(--shadow-raised); padding: 0 0 14px;
+      opacity: 0; transform: translateY(6px) scale(.98); pointer-events: none;
+      transition: opacity .18s ease, transform .18s cubic-bezier(.32,.72,0,1);
+    }
+    .apop.open { opacity: 1; transform: none; pointer-events: auto; }
+    .apop.y0 { width: min(680px, calc(100vw - 16px)); }
+    .apop.y0 .apop-body {
+      display: grid; grid-template-columns: minmax(230px, 285px) minmax(300px, 1fr); gap: 10px 12px;
+      align-items: start;
+    }
+    .apop.y0 .apop-desc,
+    .apop.y0 .apop-binding,
+    .apop.y0 .api-dispatch,
+    .apop.y0 .api-note,
+    .apop.y0 .apop-tags,
+    .apop.y0 .apop-add { grid-column: 1; }
+    .apop.y0 .candidate-panel { grid-column: 2; grid-row: 1 / span 6; margin: 0; }
+    .apop.y0 .candidate-list { max-height: 360px; }
+    @media (max-width: 720px) {
+      .apop.y0 .apop-body { display: block; }
+      .apop.y0 .candidate-panel { margin: 10px 0 12px; }
+    }
+    .apop-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 10px 12px 8px; cursor: grab; user-select: none;
+      border-bottom: 1px solid var(--line); border-radius: 14px 14px 0 0;
+    }
+    .apop-head:active { cursor: grabbing; }
+    .apop-title { font-size: 14px; font-weight: 800; letter-spacing: .03em; color: var(--ink); display: flex; align-items: center; gap: 7px; min-width: 0; }
+    .apop-title .am { font-size: 9.5px; font-weight: 800; color: var(--surface); border-radius: 999px; padding: 1.5px 8px; white-space: nowrap; }
+    .apop-title .apop-agent { font-size: 10px; font-weight: 700; letter-spacing: .07em; color: var(--soft); white-space: nowrap; }
+    .apop-body { padding: 10px 14px 0; }
+    .apop-desc { font-size: 12px; color: var(--list); line-height: 1.55; margin-bottom: 10px; }
+    .apop-binding {
+      margin: 10px 0 12px; padding: 10px 11px;
+      border: 2px dashed var(--cool); border-radius: 12px;
+      background: color-mix(in srgb, var(--cool) 7%, var(--card));
+    }
+    .apop-binding-title {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      margin-bottom: 8px; color: var(--cool-ink); font-size: 10px; font-weight: 900;
+      letter-spacing: .12em; text-transform: uppercase;
+    }
+    .apop-binding-title span:last-child {
+      letter-spacing: 0; text-transform: none; font-weight: 800; color: var(--soft);
+    }
+    .binding-grid { display: grid; gap: 6px; }
+    .binding-row {
+      display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 8px;
+      align-items: start; font-size: 11.5px; line-height: 1.45;
+    }
+    .binding-row dt { margin: 0; color: var(--cool-ink); font-weight: 800; white-space: nowrap; }
+    .binding-row dd { margin: 0; color: var(--list); min-width: 0; overflow-wrap: anywhere; }
+    .binding-row dd.none { color: var(--soft); }
+    .candidate-panel {
+      display: none; margin: 10px 0 12px; padding: 10px 11px;
+      border: 2px solid var(--warm); border-radius: 12px; background: color-mix(in srgb, var(--warm) 7%, var(--card));
+    }
+    .candidate-panel.open { display: block; }
+    .candidate-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; margin-bottom: 8px; }
+    .candidate-head strong { color: var(--warm-ink); font-size: 10px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+    .candidate-head span { color: var(--soft); font-size: 10.5px; font-weight: 800; }
+    .candidate-list { display: grid; gap: 7px; max-height: 260px; overflow: auto; padding-right: 2px; }
+    .candidate-card { border: 1px solid color-mix(in srgb, var(--warm) 48%, var(--line)); border-radius: 10px; background: var(--card); padding: 8px 9px; }
+    .candidate-card h4 { margin: 0 0 5px; color: var(--ink); font-size: 12.5px; font-weight: 900; display: flex; justify-content: space-between; gap: 8px; }
+    .candidate-card h4 span { color: var(--warm-ink); font-variant-numeric: tabular-nums; font-size: 11px; }
+    .candidate-meta { color: var(--list); font-size: 10.8px; line-height: 1.45; }
+    .candidate-action { margin-top: 5px; color: var(--cool-ink); font-size: 10.8px; font-weight: 800; }
+    .candidate-select {
+      margin-top: 7px; width: 100%; border: 1px solid var(--warm); background: var(--warm); color: var(--surface);
+      font: inherit; font-size: 11px; font-weight: 900; padding: 6px 8px; border-radius: 8px; cursor: pointer;
+    }
+    .candidate-select:hover { opacity: .92; }
+    .candidate-select:disabled { cursor: not-allowed; opacity: .55; }
+    .candidate-card.selected { border-color: var(--cool); box-shadow: 0 0 0 2px color-mix(in srgb, var(--cool) 18%, transparent); }
+    .apop-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .apop-tag {
+      display: inline-flex; align-items: center; gap: 5px;
+      border: 1px solid var(--cool); background: color-mix(in srgb, var(--cool) 10%, var(--card));
+      color: var(--cool-ink); font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2.5px 10px;
+    }
+    .apop-tag button { border: none; background: none; color: inherit; font: inherit; font-size: 11px; cursor: pointer; padding: 0; line-height: 1; }
+    .apop-add { display: flex; gap: 6px; }
+    .apop-add input {
+      flex: 1; border: 1px solid var(--line); background: var(--bg-alt); color: var(--ink);
+      font: inherit; font-size: 12px; padding: 6px 10px; border-radius: 8px; outline: none;
+    }
+    .apop-add input:focus { border-color: var(--cool); }
+    .apop-add input::placeholder { color: var(--soft); }
+    .apop-add .add-btn {
+      border: none; background: var(--ink); color: var(--bg); font: inherit; font-size: 13px; font-weight: 700;
+      padding: 6px 12px; border-radius: 8px; cursor: pointer;
+    }
+    .apop-add .add-btn:active { transform: scale(.96); }
+    .api-dispatch {
+      width: 100%; margin: 0 0 8px; border: none; background: var(--cool); color: var(--surface);
+      font: inherit; font-size: 12.5px; font-weight: 800; padding: 8px 12px; border-radius: 8px; cursor: pointer;
+    }
+    .api-dispatch:hover { opacity: .92; }
+    .api-dispatch:disabled { cursor: not-allowed; opacity: .55; }
+    .api-note { min-height: 16px; margin: -2px 0 9px; color: var(--soft); font-size: 10.5px; line-height: 1.45; }
+    .modal .sub-h { font-size: 10px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--soft); margin-left: 6px; }
+    .llm-list { display: grid; gap: 6px; max-height: 62vh; overflow-y: auto; margin-top: 4px; }
+    .llm-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; font-size: 12px; font-weight: 700; color: var(--ink); }
+    .llm-row .opts { display: flex; gap: 5px; }
+    .llm-row .opts button { border: 1px solid var(--line); background: var(--card); color: var(--soft); font: inherit; font-size: 10px; font-weight: 700; padding: 3px 12px; border-radius: 7px; cursor: pointer; }
+    .llm-row .opts button.on { color: var(--surface); border-color: transparent; }
+    .agent-row {
+      border: 1.5px solid var(--line); border-radius: 9px; background: var(--card);
+      padding: 4px 8px; cursor: default; transition: opacity .15s ease, border-color .15s ease, box-shadow .15s ease;
+    }
+    .agent-row.dim { opacity: .3; }
+    .agent-row:hover, .agent-row.active { border-color: var(--rc, var(--ink)); box-shadow: var(--shadow); }
+    .agent-row .at { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+    .agent-row .an { font-size: 14px; font-weight: 800; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .agent-row .ad { font-size: 8.5px; color: var(--soft); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .llm { display: flex; gap: 4px; margin-top: 3px; }
+    .llm button {
+      flex: 1; border: 1px solid var(--line); background: var(--surface); color: var(--soft);
+      font: inherit; font-size: 9.5px; font-weight: 700; padding: 3px 0; border-radius: 6px; cursor: pointer;
+      transition: all .12s ease;
+    }
+    .llm button:hover { border-color: var(--soft); }
+    .llm button.on { color: var(--surface); border-color: transparent; background: var(--rc, var(--ink)); }
+
+    .chart {
+      position: relative; width: 1150px; height: 760px; flex: 0 0 1150px;
+      overflow: auto; border: 3px solid var(--line); border-radius: 14px;
+      background: var(--bg-alt); transition: border-color .3s ease;
+    }
+    .chart.b-warn { border-color: #e0a33c; }
+    .chart.b-bad { border-color: var(--red); }
+    svg.wires { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .wires path { transition: opacity .18s ease; }
+    .wires .edge { fill: none; stroke-width: 2; }
+    .wires .back { stroke: var(--red); stroke-width: 2; stroke-dasharray: 7 5; }
+    /* 換帶 / lane 分岔：結構性接續，不是回饋，所以既不是實線也不是紅色 */
+    .wires .wrap { stroke: var(--soft); stroke-width: 1.5; stroke-dasharray: 2 4; opacity: .8; }
+    .wires .elabel { font-size: 9.5px; font-weight: 800; letter-spacing: .04em; fill: var(--soft); }
+
+    /* ---- 進場動畫由 GSAP 驅動；無 GSAP 時 CSS fallback（都是平滑描繪）---- */
+    .wires .edge:not(.back):not(.wrap) { stroke-dasharray: 1; }
+    body.css-anim .gnode { animation: nodeIn .35s cubic-bezier(.23,1,.32,1) backwards; animation-delay: calc(var(--i, 0) * 40ms + 100ms); }
+    body.css-anim .wires .edge:not(.back):not(.wrap) { animation: edgeDraw .7s cubic-bezier(.23,1,.32,1) backwards; animation-delay: calc(var(--ei, 0) * 50ms + 700ms); }
+    @keyframes nodeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    @keyframes edgeDraw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+
+    /* 高度鎖死 90px，不是 min-height。EDGES 的每一條座標都是照 W=160 / H=90 算的，
+       卡片一被長標題撐高，底部出線的錨點就整排對不上。內容改用 clamp 截斷而不是撐開。 */
+    .gnode {
+      position: absolute; width: 160px; height: 90px; box-sizing: border-box;
+      background: var(--card); border: 1.5px solid var(--line); border-radius: 12px;
+      box-shadow: var(--shadow); padding: 6px 9px; cursor: default; overflow: hidden;
+      display: flex; flex-direction: column;
+      transition: opacity .18s ease, border-color .16s ease, transform .16s ease, box-shadow .16s ease;
+    }
+    .gnode.dim { opacity: .22; }
+    .gnode:hover, .gnode.pinned { transform: translateY(-2px); box-shadow: var(--shadow-raised); }
+    .gnode .t { font-size: 12.5px; font-weight: 800; letter-spacing: .02em; line-height: 1.2; display: flex; align-items: center; gap: 6px; justify-content: space-between; }
+    .gnode .t .lb { display: flex; align-items: center; gap: 5px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* agent 代號獨立一行：中文角色名負責一眼辨識，英文代號負責對回名冊，擠同一行兩邊都讀不清 */
+    .gnode .a {
+      font-size: 8.5px; font-weight: 700; letter-spacing: .07em; color: var(--soft);
+      margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .gnode .d {
+      font-size: 9.5px; color: var(--soft); margin-top: 3px; line-height: 1.3; flex: 1 1 auto;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .gnode .m {
+      display: inline-block; font-size: 8.5px; font-weight: 800; letter-spacing: .04em;
+      border-radius: 999px; padding: 1.5px 7px; color: var(--surface); white-space: nowrap;
+    }
+
+    .gnode.l-ink { border-color: var(--ink); } .gnode.l-ink .t .lb { color: var(--ink); }
+    .gnode.l-gray { border-color: var(--lg); } .gnode.l-gray .t .lb { color: var(--lg-ink); }
+    .gnode.l-warm { border-color: var(--warm); } .gnode.l-warm .t .lb { color: var(--warm-ink); }
+    .gnode.l-cool { border-color: var(--cool); } .gnode.l-cool .t .lb { color: var(--cool-ink); }
+    .gnode.l-slate { border-color: var(--ls); } .gnode.l-slate .t .lb { color: var(--ls-ink); }
+    .gnode.gate { border-style: dashed; }
+    /* lane 徽章：標這個工位被哪幾條 lane 走過。* = 有條件（L3 只有 dev_kit 進 Coder/Review） */
+    .gnode .lanes { display: flex; flex-wrap: nowrap; gap: 3px; margin-top: auto; }
+    .gnode .lanes span {
+      font-size: 8px; font-weight: 800; letter-spacing: .03em; line-height: 1;
+      padding: 2.5px 5px; border-radius: 4px; color: var(--soft);
+      border: 1px solid var(--line); background: var(--bg-alt);
+    }
+    .gnode .lanes span.on { color: var(--surface); background: var(--ls); border-color: transparent; }
+    /* 帶標題：決策 / 產線 / 治理 三層的分隔標籤 */
+    .band-label {
+      position: absolute; font-size: 9.5px; font-weight: 800; letter-spacing: .08em;
+      color: var(--soft); opacity: .7; text-transform: uppercase; pointer-events: none;
+    }
+    .band-rule { position: absolute; left: 0; height: 1px; background: var(--line); opacity: .55; pointer-events: none; }
+
+    /* ---- modal ---- */
+    .modal-mask {
+      position: fixed; inset: 0; z-index: 100; background: rgba(20,24,28,.35);
+      display: none; align-items: center; justify-content: center;
+    }
+    .modal-mask.open { display: flex; }
+    .modal {
+      width: 460px; max-width: calc(100vw - 40px); background: var(--card); border-radius: 16px;
+      box-shadow: var(--shadow-raised); padding: 20px 22px;
+    }
+    .modal h3 { margin: 0 0 12px; font-size: 14px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .modal .l-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--list); padding: 4px 0; }
+    .modal .l-row i { width: 10px; height: 10px; border-radius: 999px; flex: 0 0 10px; }
+    .modal .l-row .ln { width: 26px; height: 0; border-top: 2px solid var(--spine); flex: 0 0 26px; }
+    .modal .l-row .lb { width: 26px; height: 0; border-top: 2px dashed var(--red); flex: 0 0 26px; }
+    .modal .desc { font-size: 11.5px; color: var(--list); line-height: 1.6; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+    .modal .tree {
+      margin: 12px 0 0; padding: 12px 14px; background: var(--bg-alt); border: 1px solid var(--line); border-radius: 10px;
+      font-family: Consolas, Menlo, monospace; font-size: 10.5px; line-height: 1.55; color: var(--list);
+      white-space: pre; overflow-x: auto;
+    }
+    .info-btn:active, .gear:active, .cfg-pill:active, .llm-row .opts button:active, .modal .close:active, .cfg-add:active { transform: scale(.96); }
+    .modal .close {
+      margin-top: 14px; width: 100%; border: 1px solid var(--line); background: var(--card); color: var(--list);
+      font: inherit; font-size: 12px; font-weight: 700; padding: 8px; border-radius: 10px; cursor: pointer;
+    }
+    .modal .close:hover { border-color: var(--soft); }
+    .canvas-stack { flex: 1; min-width: 0; display: grid; gap: 10px; }
+    .viewtabs {
+      display: inline-flex; width: max-content; max-width: 100%; gap: 4px; padding: 4px;
+      border: 1px solid var(--line); border-radius: 999px; background: var(--card); box-shadow: var(--shadow);
+    }
+    .viewtab {
+      border: 0; background: transparent; color: var(--soft); font: inherit; font-size: 12px; font-weight: 800;
+      padding: 7px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+    }
+    .viewtab.active { background: var(--ink); color: var(--bg); }
+    .graph-view { display: none; }
+    .graph-view.active { display: block; }
+    .dispatch-board {
+      min-height: 820px; overflow: auto; border: 3px solid var(--line); border-radius: 14px;
+      background: var(--surface); box-shadow: var(--shadow); padding: 24px; color: #222;
+    }
+    .dispatch-title { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
+    .dispatch-title h2 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #222; }
+    .dispatch-title p { margin: 0; max-width: 620px; color: #444; font-size: 12px; line-height: 1.55; text-align: right; }
+    .dispatch-table { min-width: 1080px; display: grid; gap: 10px; }
+    .dispatch-head, .dispatch-row { display: grid; grid-template-columns: 1.15fr .95fr 1.15fr .95fr 1.05fr; gap: 12px; align-items: stretch; }
+    .dispatch-head div { padding: 0 12px 8px; color: #444; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; border-bottom: 3px solid #e2e6ea; }
+    .dispatch-head .orange { border-color: var(--warm); color: var(--warm-ink); }
+    .dispatch-head .blue { border-color: var(--cool); color: var(--cool-ink); }
+    .dispatch-cell { position: relative; min-height: 112px; padding: 13px 14px; border: 2px solid #e2e6ea; border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-raised); }
+    .dispatch-cell.orange { border-color: var(--warm); border-width: 3px; background: color-mix(in srgb, var(--warm) 12%, #fff); }
+    .dispatch-cell.blue { border-color: var(--cool); border-width: 3px; background: color-mix(in srgb, var(--cool) 8%, #fff); }
+    .dispatch-cell h3 { margin: 0 0 8px; color: #222; font-size: 14px; font-weight: 800; letter-spacing: .02em; }
+    .dispatch-cell ul { margin: 0; padding: 0; list-style: none; color: #444; font-size: 12px; line-height: 1.65; }
+    .dispatch-cell li::before { content: '- '; }
+    .dispatch-icon { width: 34px; height: 34px; border-radius: 999px; display: grid; place-items: center; margin-bottom: 8px; background: var(--surface); box-shadow: var(--shadow-raised); border: 2px solid currentColor; }
+    .dispatch-icon svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: square; stroke-linejoin: miter; }
+    .dispatch-cell.orange .dispatch-icon { color: var(--warm); }
+    .dispatch-cell.blue .dispatch-icon { color: var(--cool); }
+    .dispatch-arrow { position: absolute; right: -21px; top: 54px; width: 30px; height: 2px; background: currentColor; z-index: 3; }
+    .dispatch-arrow::after { content: ''; position: absolute; right: -1px; top: -5px; width: 10px; height: 10px; border-top: 2px solid currentColor; border-right: 2px solid currentColor; transform: rotate(45deg); }
+    .dispatch-cell.orange .dispatch-arrow { color: var(--warm); }
+    .dispatch-cell.blue .dispatch-arrow { color: var(--cool); }
+    .merge-gate { min-width: 1080px; margin-top: 18px; padding: 14px 16px; border: 2px solid var(--text-primary); border-radius: 14px; box-shadow: var(--shadow-raised); display: grid; grid-template-columns: 180px 1fr; gap: 14px; align-items: center; }
+    .merge-gate strong { color: #222; font-size: 14px; letter-spacing: .06em; text-transform: uppercase; }
+    .merge-gate span { color: #444; font-size: 12px; line-height: 1.55; }
+    /* ---- Dynamic Graph Monitor：Neumorphism / Soft UI ---- */
+    .monitor-board {
+      min-height: 820px; overflow: auto; border: none; border-radius: 26px;
+      background: #ece7e0; box-shadow: var(--shadow-raised);
+      padding: 34px; color: #6b6560;
+    }
+    .monitor-title { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-bottom: 22px; }
+    .monitor-title h2 { margin: 0; font-size: 19px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--cool); }
+    .monitor-title p { margin: 0; max-width: 640px; color: #a39c92; font-size: 12px; line-height: 1.55; text-align: right; }
+    .monitor-status {
+      min-width: 1080px; display: grid; grid-template-columns: 260px 1fr 1fr 1fr; gap: 18px; margin-bottom: 20px;
+    }
+    .status-card, .metric-card {
+      border: none; border-radius: 20px; background: #ece7e0;
+      box-shadow: 8px 8px 16px #cec7bd, -8px -8px 16px #ffffff;
+      padding: 18px 20px; transition: box-shadow .18s ease, transform .18s ease;
+    }
+    .status-card, .metric-card.clickable {
+      cursor: pointer; font: inherit; text-align: left; display: block; width: 100%;
+    }
+    .status-card:hover, .metric-card.clickable:hover {
+      box-shadow: 10px 10px 20px #cec7bd, -10px -10px 20px #ffffff; transform: translateY(-1px);
+    }
+    .status-card:active, .metric-card.clickable:active { box-shadow: inset 6px 6px 12px #cec7bd, inset -6px -6px 12px #ffffff; transform: none; }
+    .status-kicker, .metric-kicker { color: #a39c92; font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+    .metric-card.orange .metric-kicker { color: var(--warm); }
+    .metric-card.blue .metric-kicker { color: var(--cool); }
+    .status-card h3 { margin: 10px 0 6px; color: #b3763a; font-size: 26px; line-height: 1; font-weight: 900; }
+    .status-card p { margin: 0; color: #8f887e; font-size: 12px; line-height: 1.5; }
+    .metric-value { display: flex; align-items: baseline; gap: 7px; margin-top: 10px; color: #6b6560; font-weight: 900; }
+    .metric-value strong { font-size: 28px; line-height: 1; }
+    .metric-value span { color: #a39c92; font-size: 11px; font-weight: 700; }
+    .meter {
+      height: 9px; margin: 14px 0 10px; border-radius: 999px; background: #ece7e0; overflow: hidden;
+      box-shadow: inset 3px 3px 6px #cec7bd, inset -3px -3px 6px #ffffff;
+    }
+    .meter i { display: block; height: 100%; border-radius: inherit; background: var(--accent-primary); }
+    .metric-card p { margin: 0; color: #8f887e; font-size: 12px; line-height: 1.45; }
+    .monitor-grid { min-width: 1080px; display: grid; grid-template-columns: 1fr; gap: 14px; align-items: start; }
+    .monitor-panel { display: grid; gap: 12px; }
+    .monitor-section-title { margin: 8px 0 0; color: #6b6560; font-size: 13px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .signal-list { display: flex; flex-wrap: wrap; gap: 26px; padding: 10px 2px; }
+    .signal-card {
+      display: grid; justify-items: center; gap: 9px; width: 96px; cursor: pointer;
+      background: none; border: none; padding: 0; font: inherit;
+      transition: transform .15s ease;
+    }
+    .signal-card:hover, .signal-card:focus-visible { transform: translateY(-2px); outline: none; }
+    .signal-card:hover .signal-icon, .signal-card:focus-visible .signal-icon {
+      box-shadow: 9px 9px 18px #cec7bd, -9px -9px 18px #ffffff;
+    }
+    .signal-icon {
+      position: relative; width: 58px; height: 58px; border-radius: 999px; display: grid; place-items: center;
+      background: #ece7e0; color: #b3763a;
+      box-shadow: 7px 7px 14px #cec7bd, -7px -7px 14px #ffffff; transition: box-shadow .15s ease;
+    }
+    .signal-icon svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .signal-icon::after {
+      content: ''; position: absolute; right: -1px; bottom: -1px; width: 13px; height: 13px; border-radius: 999px;
+      border: 2px solid #ece7e0; background: #a39c92;
+    }
+    .signal-card[data-state="正常"] .signal-icon::after { background: #b7c99a; }
+    .signal-card[data-state="警告"] .signal-icon::after { background: var(--warm); }
+    .signal-card[data-state="觀察"] .signal-icon::after { background: #a39c92; }
+    .signal-card[data-state="熔斷"] .signal-icon::after { background: var(--red); }
+    .signal-title { color: #6b6560; font-size: 12px; font-weight: 700; text-align: center; line-height: 1.3; }
+    .rule-card { border-style: dashed; border-color: var(--cool); }
+    .rule-card.orange { border-color: var(--warm); }
+    .rule-card.red { border-color: var(--red); }
+    .rule-card h3 { margin: 0 0 8px; color: #222; font-size: 14px; font-weight: 900; }
+    .rule-card ul { margin: 0; padding: 0; list-style: none; color: #444; font-size: 12px; line-height: 1.65; }
+    .rule-card li::before { content: '- '; }
+    .rule-card { border: 2px solid #e2e6ea; border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-raised); padding: 14px 16px; }
+    .monitor-table { min-width: 1080px; margin-top: 18px; display: grid; gap: 10px; }
+    .monitor-row, .monitor-head { display: grid; grid-template-columns: 1fr .9fr .9fr 1.2fr; gap: 12px; align-items: stretch; }
+    .monitor-head div { padding: 0 12px 8px; color: #a39c92; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; border-bottom: 2px solid #d9d2c8; }
+    .monitor-cell {
+      border: none; border-radius: 16px; background: #ece7e0; padding: 12px 14px; color: #8f887e;
+      font-size: 12px; line-height: 1.45; box-shadow: 6px 6px 12px #cec7bd, -6px -6px 12px #ffffff;
+    }
+    .monitor-cell strong { display: block; color: #6b6560; margin-bottom: 4px; font-size: 13px; }
+    .monitor-chip {
+      display: inline-flex; align-items: center; border-radius: 999px; padding: 3px 11px; font-size: 11px; font-weight: 800;
+      background: #ece7e0; color: #8f887e; box-shadow: inset 2px 2px 5px #cec7bd, inset -2px -2px 5px #ffffff;
+    }
+    .monitor-chip.warn { color: var(--warm); }
+    .monitor-chip.stop { color: var(--red); }
+    .monitor-chip.ok { color: #7a9159; }
+    @media (max-width: 900px) {
+      .dispatch-title { display: block; }
+      .dispatch-title p { text-align: left; margin-top: 8px; }
+      .dispatch-table, .merge-gate { min-width: 920px; }
+      .dispatch-head, .dispatch-row { grid-template-columns: 1.1fr .9fr 1fr .9fr 1fr; }
+    }
+    .branch-board {
+      min-height: 820px; overflow: auto; border: none; border-radius: 20px;
+      background: #e8e4df; box-shadow: 8px 8px 20px #cec9c4, -8px -8px 20px #fff; padding: 30px; color: #555;
+    }
+    .branch-title { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; margin-bottom: 26px; }
+    .branch-title h2 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #6b6560; }
+    .branch-title p { margin: 0; color: #9a948e; font-size: 12px; line-height: 1.5; max-width: 560px; text-align: right; }
+    .font-ctrl { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+    .font-ctrl button {
+      width: 34px; height: 34px; border: none; border-radius: 10px; cursor: pointer;
+      background: #e8e4df; box-shadow: 3px 3px 8px #cec9c4, -3px -3px 8px #fff;
+      font-size: 18px; font-weight: 700; color: #6b6560; line-height: 1;
+    }
+    .font-ctrl button:hover { box-shadow: 2px 2px 5px #c8c2ba, -2px -2px 5px #fff; }
+    .font-ctrl button:active { box-shadow: inset 2px 2px 5px #cec9c4, inset -2px -2px 5px #fff; }
+    .font-ctrl span { font-size: 13px; color: #9a948e; min-width: 48px; text-align: center; }
+    @media (max-width: 900px) {
+      .main { flex-direction: column; }
+      .side { width: 100%; flex-basis: auto; height: auto; max-height: 300px; }
+      .canvas-stack { width: 100%; }
+      .viewtabs { width: 100%; justify-content: center; }
+      .dispatch-board {
+      min-height: 820px; overflow: auto; border: 3px solid var(--line); border-radius: 14px;
+      background: var(--surface); box-shadow: var(--shadow); padding: 24px; color: #222;
+    }
+    .dispatch-title { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
+    .dispatch-title h2 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #222; }
+    .dispatch-title p { margin: 0; max-width: 620px; color: #444; font-size: 12px; line-height: 1.55; text-align: right; }
+    .dispatch-table { min-width: 1080px; display: grid; gap: 10px; }
+    .dispatch-head, .dispatch-row { display: grid; grid-template-columns: 1.15fr .95fr 1.15fr .95fr 1.05fr; gap: 12px; align-items: stretch; }
+    .dispatch-head div { padding: 0 12px 8px; color: #444; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; border-bottom: 3px solid #e2e6ea; }
+    .dispatch-head .orange { border-color: var(--warm); color: var(--warm-ink); }
+    .dispatch-head .blue { border-color: var(--cool); color: var(--cool-ink); }
+    .dispatch-cell { position: relative; min-height: 112px; padding: 13px 14px; border: 2px solid #e2e6ea; border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-raised); }
+    .dispatch-cell.orange { border-color: var(--warm); border-width: 3px; background: color-mix(in srgb, var(--warm) 12%, #fff); }
+    .dispatch-cell.blue { border-color: var(--cool); border-width: 3px; background: color-mix(in srgb, var(--cool) 8%, #fff); }
+    .dispatch-cell h3 { margin: 0 0 8px; color: #222; font-size: 14px; font-weight: 800; letter-spacing: .02em; }
+    .dispatch-cell ul { margin: 0; padding: 0; list-style: none; color: #444; font-size: 12px; line-height: 1.65; }
+    .dispatch-cell li::before { content: '- '; }
+    .dispatch-icon { width: 34px; height: 34px; border-radius: 999px; display: grid; place-items: center; margin-bottom: 8px; background: var(--surface); box-shadow: var(--shadow-raised); border: 2px solid currentColor; }
+    .dispatch-icon svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: square; stroke-linejoin: miter; }
+    .dispatch-cell.orange .dispatch-icon { color: var(--warm); }
+    .dispatch-cell.blue .dispatch-icon { color: var(--cool); }
+    .dispatch-arrow { position: absolute; right: -21px; top: 54px; width: 30px; height: 2px; background: currentColor; z-index: 3; }
+    .dispatch-arrow::after { content: ''; position: absolute; right: -1px; top: -5px; width: 10px; height: 10px; border-top: 2px solid currentColor; border-right: 2px solid currentColor; transform: rotate(45deg); }
+    .dispatch-cell.orange .dispatch-arrow { color: var(--warm); }
+    .dispatch-cell.blue .dispatch-arrow { color: var(--cool); }
+    .merge-gate { min-width: 1080px; margin-top: 18px; padding: 14px 16px; border: 2px solid var(--text-primary); border-radius: 14px; box-shadow: var(--shadow-raised); display: grid; grid-template-columns: 180px 1fr; gap: 14px; align-items: center; }
+    .merge-gate strong { color: #222; font-size: 14px; letter-spacing: .06em; text-transform: uppercase; }
+    .merge-gate span { color: #444; font-size: 12px; line-height: 1.55; }
+    @media (max-width: 900px) {
+      .dispatch-title { display: block; }
+      .dispatch-title p { text-align: left; margin-top: 8px; }
+      .dispatch-table, .merge-gate { min-width: 920px; }
+      .dispatch-head, .dispatch-row { grid-template-columns: 1.1fr .9fr 1fr .9fr 1fr; }
+    }
+    .branch-board { padding: 16px; min-height: 680px; }
+      .branch-board svg { min-width: 800px; }
+      .branch-title { display: block; }
+      .branch-title p { text-align: left; margin-top: 8px; }
+    }
+  
+    :root, :root[data-theme="dark"] {
+      --color-bg: #F5F0E8;
+      --surface: #F5F0E8;
+      --surface-light: #ffffff;
+      --shadow-dark: #d1cdc6;
+      --shadow-light: #ffffff;
+      --text-primary: #1B3A5C;
+      --text-secondary: #2C3E50;
+      --text-tertiary: #5D6D7E;
+      --text-muted: #8B95A5;
+      --accent-primary: #1B3A5C;
+      --accent-orange: #F29423;
+      --accent-blue: #2478D2;
+      --accent-green: #27AE60;
+      --accent-red: #E74C3C;
+      --line-soft: #E3DDD3;
+      --ink: var(--text-primary);
+      --list: var(--text-secondary);
+      --soft: var(--text-tertiary);
+      --bg: var(--color-bg);
+      --bg-alt: var(--surface);
+      --card: var(--surface);
+      --line: var(--line-soft);
+      --warm: var(--accent-orange);
+      --warm-ink: #9D5A12;
+      --cool: var(--accent-blue);
+      --cool-ink: #1B3A5C;
+      --red: var(--accent-red);
+      --green: var(--accent-green);
+      --spine: #B9B0A4;
+      --lg: #8B95A5; --lg-ink: #5D6D7E;
+      --ls: #2478D2; --ls-ink: #1B3A5C;
+      --shadow: var(--shadow-raised);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --color-bg: #F5F0E8;
+        --surface: #F5F0E8;
+        --ink: var(--text-primary);
+        --list: var(--text-secondary);
+        --soft: var(--text-tertiary);
+        --bg: var(--color-bg);
+        --bg-alt: var(--surface);
+        --card: var(--surface);
+        --line: var(--line-soft);
+        --shadow: var(--shadow-raised);
+      }
+    }
+    /* ---- Neumorphic system refresh: 12Tree / Dynamic Graph / Dispatch ---- */
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--color-bg);
+      color: var(--text-secondary);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+    body, button, input { letter-spacing: 0; }
+    .shell { padding: var(--space-6) var(--space-5) var(--space-10); }
+    header {
+      position: sticky; top: var(--space-3); z-index: 40;
+      display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3);
+      margin-bottom: var(--space-4); padding: var(--space-3) var(--space-4);
+      background: var(--surface); border: 0; border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+    }
+    h1, h2, h3, h4, .brandline, .panel-title, .dispatch-title, .monitor-title {
+      color: var(--text-primary); font-weight: 600; letter-spacing: .5px;
+    }
+    .brandline {
+      display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--space-2);
+      min-width: min(100%, 360px); font-size: clamp(18px, 2.4vw, 28px);
+      text-transform: none; white-space: normal;
+    }
+    .brandline strong { color: var(--accent-primary); font-weight: 700; }
+    .brand-dash { color: var(--text-tertiary); font-weight: 500; }
+    .data-tools { display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+
+    .info-btn, .brand-refresh, .cfg-pill, .cfg-add, .cfg-edit, .gear, .viewtab,
+    .api-dispatch, .candidate-select, .skill-form .add-btn, .skill-item .rm,
+    .drawer-head .gear, .modal .close, .export-btn, button {
+      border: 0; border-radius: var(--radius-full); background: var(--surface); color: var(--text-secondary);
+      box-shadow: var(--shadow-raised); transition: transform .16s ease, box-shadow .16s ease, color .16s ease, background .16s ease;
+      cursor: pointer;
+    }
+    .info-btn:hover, .brand-refresh:hover, .cfg-pill:hover, .cfg-add:hover, .cfg-edit:hover,
+    .gear:hover, .viewtab:hover, .api-dispatch:hover, .candidate-select:hover,
+    .skill-form .add-btn:hover, .skill-item .rm:hover, .export-btn:hover, button:hover:not(:disabled) {
+      transform: translateY(-1px); box-shadow: var(--shadow-raised-hover); color: var(--accent-primary);
+    }
+    .info-btn:active, .brand-refresh:active, .cfg-pill:active, .cfg-add:active, .cfg-edit:active,
+    .gear:active, .viewtab:active, .api-dispatch:active, .candidate-select:active,
+    .skill-form .add-btn:active, .skill-item .rm:active, .export-btn:active, button:active:not(:disabled) {
+      transform: translateY(0); box-shadow: var(--shadow-pressed);
+    }
+    button:disabled, .info-btn:disabled, .api-dispatch:disabled, .candidate-select:disabled {
+      opacity: .5; cursor: not-allowed; box-shadow: var(--shadow-sunken); transform: none;
+    }
+    .info-btn.primary, #tovikingRefresh, .api-dispatch, .skill-form .add-btn, .export-btn {
+      background: var(--accent-primary); color: var(--surface); box-shadow: 4px 4px 10px rgba(27,58,92,.30), -4px -4px 10px rgba(255,255,255,.88);
+    }
+    .info-btn.primary:hover, #tovikingRefresh:hover, .api-dispatch:hover, .skill-form .add-btn:hover, .export-btn:hover {
+      color: var(--surface);
+    }
+    .date-picker, .cfg-input, .skill-form input, input[type="text"], input[type="url"], input[type="date"] {
+      background: var(--surface); color: var(--text-secondary); border: 0; border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sunken); padding: var(--space-3) var(--space-4); outline: none;
+      font: inherit; font-size: 12px; color-scheme: light;
+    }
+    .date-picker:focus, .cfg-input:focus, .skill-form input:focus, input:focus { box-shadow: var(--shadow-pressed); }
+    input::placeholder { color: var(--text-muted); }
+    input[type=range] { background: var(--surface); box-shadow: var(--shadow-sunken); height: var(--space-2); }
+    input[type=range]::-webkit-slider-thumb { border: 0; background: var(--accent-primary); box-shadow: var(--shadow-raised); }
+
+    .settings, .cfgbar, .tagstrip, .side, .canvas-stack, .chart, .dispatch-board,
+    .dispatch-cell, .branch-board, .branch-card, .monitor-board, .metric-card,
+    .rule-card, .status-card, .candidate-panel, .candidate-card, .skill-item,
+    .apop, .drawer, .modal, .legend, .panel, .node-card, .openclaw-card {
+      background: var(--surface); border: 0; border-radius: var(--radius-lg); box-shadow: var(--shadow-raised);
+    }
+    .settings, .cfgbar, .tagstrip, .side, .canvas-stack, .dispatch-board, .monitor-board {
+      padding: var(--space-4);
+    }
+    .chart { border-radius: var(--radius-xl); }
+    .settings:hover, .cfgbar:hover, .tagstrip:hover, .side:hover, .canvas-stack:hover,
+    .dispatch-cell:hover, .branch-card:hover, .metric-card:hover, .rule-card:hover,
+    .status-card:hover, .candidate-card:hover {
+      box-shadow: var(--shadow-raised-hover); transform: translateY(-1px);
+    }
+    .settings .row .name, .tagstrip-title, .cfgbar .cfg-title, .metric-label, .rule-label,
+    .dispatch-label, .candidate-meta, .api-note, .skill-foot {
+      color: var(--text-tertiary); font-size: 11px; letter-spacing: 1px;
+    }
+    .settings .row .val, .binding-row dd, .candidate-action { color: var(--text-secondary); }
+    .apop-binding {
+      background: var(--surface); border: 2px dashed var(--accent-blue); border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sunken);
+    }
+    .candidate-panel { border: 2px dashed var(--accent-orange); }
+    .tag-pill, .cfg-pill.active, .viewtab.active {
+      background: var(--surface); color: var(--accent-primary); border: 0; box-shadow: var(--shadow-pressed);
+    }
+    .tag-pill.on { background: var(--accent-primary); color: var(--surface); box-shadow: var(--shadow-pressed); }
+    .agent-row .am, .apop-title .am, .llm-badge { color: var(--surface); }
+    .drawer-mask, .modal-mask { background: rgba(27,58,92,.15); backdrop-filter: blur(4px); }
+    .drawer { border-left: 0; border-radius: var(--radius-xl) 0 0 var(--radius-xl); }
+    .modal { border-radius: var(--radius-xl); }
+    .meter { background: var(--surface); box-shadow: var(--shadow-sunken); }
+    .meter i { background: var(--accent-primary); }
+    .status-dot, .api-status::before, .api-status.on::before, .api-status.pending::before { box-shadow: var(--shadow-soft); }
+    .wires .edge, .flow-line, svg polyline, svg line { stroke-linecap: square; stroke-linejoin: miter; }
+
+    @keyframes skeletonPulse { 0%, 100% { opacity: .6; } 50% { opacity: 1; } }
+    .skeleton { background: var(--surface); box-shadow: var(--shadow-sunken); animation: skeletonPulse 1.8s ease-in-out infinite; }
+    .spinner {
+      width: 32px; height: 32px; border-radius: var(--radius-full);
+      border: 3px solid var(--surface); border-top-color: var(--accent-primary);
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 768px) {
+      .shell { padding: var(--space-3); }
+      header { top: var(--space-2); border-radius: var(--radius-lg); }
+      .brandline { width: 100%; font-size: 22px; }
+      .data-tools { width: 100%; justify-content: space-between; }
+      .date-picker { flex: 1 1 160px; min-width: 0; }
+      .main { flex-direction: column; }
+      .side { width: 100%; flex-basis: auto; height: auto; }
+    }
+  
+    /* ---- Top navigation relocation ---- */
+    .top-tabs { order: 20; margin-left: var(--space-1); }
+    #llmBtn { order: 21; }
+    #skillBtn, #openclawStatus, #openclawRun { order: 22; }
+    .agent-cache { display: none !important; }
+    .main { display: block; }
+    .canvas-stack { width: 100%; }
+    header .viewtabs {
+      width: auto; max-width: 100%; margin: 0; flex: 0 1 auto;
+      background: var(--surface); border: 0; box-shadow: var(--shadow-raised);
+    }
+    @media (max-width: 768px) {
+      header .viewtabs { order: 30; width: 100%; overflow-x: auto; justify-content: flex-start; }
+      #llmBtn { order: 31; }
+    }
+  
+    /* ---- View tabs：左側直欄 ----
+       .shell 是 1720px，160px 側欄 + 1150px 畫布 + gap 只用到約 1330px，放得下。
+       sticky 是為了畫布往下捲時分頁鈕還跟著。 */
+    .main { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+    .left-tabs {
+      position: sticky; top: 16px; align-self: start;
+      padding: var(--space-2); background: var(--card);
+      border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow);
+    }
+    .left-tabs .viewtabs {
+      display: grid; width: 100%; gap: var(--space-1); padding: 0;
+      background: transparent; box-shadow: none; border: 0; border-radius: 0;
+    }
+    .left-tabs .viewtab { justify-content: flex-start; width: 100%; text-align: left; padding: 9px 12px; }
+    header .top-tabs { display: none; }
+    @media (max-width: 900px) {
+      .main { display: block; }
+      .left-tabs { position: static; margin-bottom: var(--space-3); }
+      .left-tabs .viewtabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .left-tabs .viewtab { justify-content: center; text-align: center; padding: var(--space-2); }
+    }
+  
+    /* ---- Header action row ---- */
+    .data-tools {
+      display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;
+      flex: 1 1 980px; justify-content: flex-start;
+    }
+    .data-tools .date-picker { min-width: 148px; }
+    .data-tools .info-btn { min-height: 38px; }
+    @media (max-width: 768px) {
+      .data-tools { width: 100%; flex: 1 1 100%; }
+      .data-tools .info-btn { flex: 0 1 auto; }
+      .data-tools .date-picker { flex: 1 1 160px; }
+    }
+
+    /* ---- Functional dark theme restore ---- */
+    :root[data-theme="dark"] {
+      --color-bg: #20252A;
+      --surface: #20252A;
+      --surface-light: #2A3036;
+      --shadow-dark: #161A1E;
+      --shadow-light: #2D343A;
+      --text-primary: #E8EDF2;
+      --text-secondary: #D3DAE1;
+      --text-tertiary: #A7B0BA;
+      --text-muted: #7F8994;
+      --accent-primary: #7EB6F0;
+      --line-soft: #343B42;
+      --ink: var(--text-primary);
+      --list: var(--text-secondary);
+      --soft: var(--text-tertiary);
+      --bg: var(--color-bg);
+      --bg-alt: var(--surface);
+      --card: var(--surface);
+      --line: var(--line-soft);
+      --cool-ink: #A8CDF4;
+      --warm-ink: #F4B363;
+      --shadow: var(--shadow-raised);
+    }
+    :root[data-theme="dark"] body,
+    :root[data-theme="dark"] .dispatch-board,
+    :root[data-theme="dark"] .monitor-board { color: var(--text-secondary); }
+    :root[data-theme="dark"] .date-picker { color-scheme: dark; }
+  
+    /* ---- Config bar aligned with framework boundary ---- */
+    header > .cfgbar {
+      order: 40; flex: 0 1 340px; margin: 0;
+      min-width: 260px; align-self: stretch;
+      display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;
+    }
+    header > .settings {
+      order: 41; flex: 1 1 720px; min-width: min(720px, 100%);
+      margin: 0; align-self: stretch;
+    }
+    @media (max-width: 1024px) {
+      header > .cfgbar, header > .settings { flex: 1 1 100%; min-width: 0; }
+    }
+  
+    /* ---- Y1/Y2 next-step panel ---- */
+    .candidate-next {
+      margin-top: var(--space-3); padding: var(--space-3);
+      border-radius: var(--radius-md); background: var(--surface);
+      box-shadow: var(--shadow-sunken); display: grid; gap: var(--space-2);
+      font-size: 11px; color: var(--text-secondary); line-height: 1.45;
+    }
+    .candidate-next pre {
+      margin: 0; max-height: 120px; overflow: auto; white-space: pre-wrap;
+      font: 11px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace;
+      color: var(--text-tertiary);
+    }
+    .candidate-next .candidate-select { margin-top: 0; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <h1 class="brandline" aria-label="12Tree 動態Graph Dispatch"><span>12Tree</span><span class="brand-dash">-</span><span>動態Graph</span><span class="brand-dash">-</span><strong>Dispatch</strong></h1>
+      <div class="data-tools" aria-label="日期與工具列">
+        <button class="info-btn primary" id="tovikingRefresh" type="button" title="刷新 Y0 Daily Brief">刷新資料</button>
+        <input class="date-picker" id="tovikingDate" type="date" value="2026-08-07" title="選擇資料日期">
+        <button class="info-btn" id="infoBtn">ⓘ 圖例與說明</button>
+        <button class="info-btn" id="themeBtn" title="切換深淺色">☾ 深色</button>
+        <button class="info-btn" id="llmBtn" title="Agent 模型配置">Agent 列表</button>
+        <button class="info-btn" id="skillBtn" title="管理 Skills">✦ Skills</button>
+        <button class="info-btn api-status pending" id="openclawStatus" title="OpenClaw Local API">OpenClaw: 檢查中</button>
+        <button class="info-btn" id="openclawRun" title="執行 queue 裡的下一筆任務">執行下一筆</button>
+      </div>
+
+      <div class="cfgbar" id="cfgbar"></div>
+
+      <div class="settings" id="settings">
+        <div class="handle" id="setHandle">框架邊界</div>
+        <div class="row" style="--sc:var(--warm)">
+          <span class="name">預算</span>
+          <input type="range" id="slBudget" min="10" max="100" value="80">
+          <span class="val" id="vBudget">80%</span>
+        </div>
+        <div class="row" style="--sc:var(--cool)">
+          <span class="name">時程</span>
+          <input type="range" id="slTime" min="5" max="90" value="30">
+          <span class="val" id="vTime">30 天</span>
+        </div>
+        <div class="row" style="--sc:var(--ink)">
+          <span class="name">並行</span>
+          <input type="range" id="slPara" min="1" max="8" value="4">
+          <span class="val" id="vPara">4</span>
+        </div>
+        <div class="note" id="budNote">≥70% 健康，&lt;70% 黃燈，&lt;40% 熔斷</div>
+      </div></header>
+<div class="tagstrip" id="tagstrip">
+      <span class="tagstrip-title">標籤</span>
+      <div class="tagstrip-tags" id="tagstripTags"></div>
+    </div>
+
+    <div class="main">
+      
+      <aside class="left-tabs" aria-label="圖面分頁">
+        <div class="viewtabs" role="tablist">
+          <button class="viewtab active" type="button" role="tab" aria-selected="true" data-view="flow">流程圖</button>
+          <button class="viewtab" type="button" role="tab" aria-selected="false" data-view="branch">分支 / Worktree</button>
+          <button class="viewtab" type="button" role="tab" aria-selected="false" data-view="monitor">監測台</button>
+        </div>
+      </aside><div class="agent-cache" id="side" aria-hidden="true"></div>
+<div class="canvas-stack">
+<div class="graph-view active" id="flowView">
+          <div class="chart" id="chart">
+            <svg class="wires" id="wires" preserveAspectRatio="none">
+              <defs>
+                <marker id="arr" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M 0 1 L 9 5 L 0 9 z" fill="#6b7680"/>
+                </marker>
+                <marker id="arrBack" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M 0 1 L 9 5 L 0 9 z" fill="#d64545"/>
+                </marker>
+              </defs>
+            </svg>
+            <div id="nodes"></div>
+          </div>
+        </div>
+
+        <div class="graph-view" id="branchView">
+                    <section class="dispatch-board" aria-label="分支與 Worktree 派工表">
+            <div class="dispatch-title">
+              <h2>Branch / Worktree Dispatch</h2>
+              <p>每一列就是一張派工單：Graph 產生任務，Git branch 保存變更路線，worktree 是實體施工資料夾，executor 做完後回寫結果。</p>
+            </div>
+            <div class="dispatch-table">
+              <div class="dispatch-head"><div>Dynamic Graph Task</div><div class="orange">Git Branch</div><div class="blue">Worktree Folder</div><div class="blue">Executor</div><div>Return Contract</div></div>
+              <div class="dispatch-row">
+                <article class="dispatch-cell"><div class="dispatch-icon"><svg viewBox="0 0 24 24"><path d="M12 4v16M4 12h16"/><circle cx="12" cy="12" r="4"/></svg></div><h3>T-01 模型路由 UI</h3><ul><li>PRD 側欄顯示模型分工</li><li>Markdown 匯出策略</li><li>權限 L1</li></ul><span class="dispatch-arrow"></span></article>
+                <article class="dispatch-cell orange"><div class="dispatch-icon"><svg viewBox="0 0 24 24"><path d="M7 4v16M7 12h7a4 4 0 0 0 4-4V4"/><circle cx="7" cy="20" r="2"/><circle cx="18" cy="4" r="2"/></svg></div><h3>feature/model-routing</h3><ul><li>單一功能線</li><li>可獨立 review</li></ul><span class="dispatch-arrow"></span></article>
+                <article class="dispatch-cell blue"><div class="dispatch-icon"><svg viewBox="0 0 24 24"><path d="M4 8h16v12H4z"/><path d="M4 8l3-4h7l3 4"/></svg></div><h3>clawbuilders-router</h3><ul><li>獨立 checkout</li><li>不污染 main</li></ul><span class="dispatch-arrow"></span></article>
+                <article class="dispatch-cell blue"><div class="dispatch-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16v12H4z"/><path d="M8 21h8M12 17v4"/></svg></div><h3>Codex</h3><ul><li>改 React / CSS</li><li>跑 npm test</li></ul><span class="dispatch-arrow"></span></article>
+                <article class="dispatch-cell"><div class="dispatch-icon"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M9 12h6M9 16h6"/></svg></div><h3>回寫 Graph</h3><ul><li>changedFiles</li><li>tests</li><li>risks</li></ul></article>
+              </div>
+              <div class="dispatch-row">
+                <article class="dispatch-cell"><div class="dispatch-icon"><svg viewBox="0 0 24 24"><path d="M12 3l8 4v6c0 4-3 7-8 8-5-1-8-4-8-8V7z"/></svg></div><h3>T-02 Graph 監控</h3><ul><li>硬邊界</li><li>漂移指標</li><li>熔斷規則</li></ul><span class="dispatch-arrow"></span></article>
+                <article class="dispatch-cell orange"><div class="dispatch-icon"><svg viewBox="0 0 24 24"><path d="M7 4v16M7 12h7a4 4 0 0 0 4-4V4"/><circle cx="7" cy="20" r="2"/><circle cx="18" cy="4" r="2"/></svg></div><h3>feature/graph-guard</h3><ul><li>治理功能線</li><li>合併前需審核</li></ul><span class="dispatch-arrow"></span></article>
+                <article class="dispatch-cell blue"><div class="dispatch-icon"><svg viewBox="0 0 24 24"><path d="M4 8h16v12H4z"/><path d="M4 8l3-4h7l3 4"/></svg></div><h3>clawbuilders-guard</h3><ul><li>獨立驗證</li><li>可並行施工</li></ul><span class="dispatch-arrow"></span></article>
+                <article class="dispatch-cell blue"><div class="dispatch-icon"><svg viewBox="0 0 24 24"><path d="M5 5h14v14H5z"/><path d="M8 9h8M8 13h5"/></svg></div><h3>Claude Terminal</h3><ul><li>長文規則整理</li><li>工程提示生成</li></ul><span class="dispatch-arrow"></span></article>
+                <article class="dispatch-cell"><div class="dispatch-icon"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></div><h3>回寫 Graph</h3><ul><li>governance rules</li><li>thresholds</li><li>open questions</li></ul></article>
+              </div>
+              <div class="dispatch-row">
+                <article class="dispatch-cell"><div class="dispatch-icon"><svg viewBox="0 0 24 24"><path d="M8 4h8v16H8z"/><path d="M11 18h2"/></svg></div><h3>T-03 手機版流程圖</h3><ul><li>SVG / HTML 視覺調整</li><li>手機可讀</li><li>權限 L0-L1</li></ul><span class="dispatch-arrow"></span></article>
+                <article class="dispatch-cell orange"><div class="dispatch-icon"><svg viewBox="0 0 24 24"><path d="M7 4v16M7 12h7a4 4 0 0 0 4-4V4"/><circle cx="7" cy="20" r="2"/><circle cx="18" cy="4" r="2"/></svg></div><h3>fix/mobile-graph</h3><ul><li>小修路線</li><li>快速合併</li></ul><span class="dispatch-arrow"></span></article>
+                <article class="dispatch-cell blue"><div class="dispatch-icon"><svg viewBox="0 0 24 24"><path d="M4 8h16v12H4z"/><path d="M4 8l3-4h7l3 4"/></svg></div><h3>clawbuilders-mobile</h3><ul><li>窄螢幕檢查</li><li>不碰資料模型</li></ul><span class="dispatch-arrow"></span></article>
+                <article class="dispatch-cell blue"><div class="dispatch-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></div><h3>OpenClaw</h3><ul><li>本地檔案操作</li><li>打開預覽</li></ul><span class="dispatch-arrow"></span></article>
+                <article class="dispatch-cell"><div class="dispatch-icon"><svg viewBox="0 0 24 24"><path d="M4 12h16M12 4v16"/></svg></div><h3>回寫 Graph</h3><ul><li>screenshot</li><li>visual notes</li><li>next fix</li></ul></article>
+              </div>
+            </div>
+            <div class="merge-gate"><strong>Merge Gate</strong><span>每個 worktree 做完只回傳合約，不直接改北極星。Graph 收到 tests / risks / changedFiles 後，決定合併、重做、降級或熔斷。</span></div>
+          </section>
+        </div>
+        <div class="graph-view" id="monitorView">
+          <section class="monitor-board" aria-label="動態 Graph 監測台">
+            <div class="monitor-title">
+              <h2>Dynamic Graph Monitor</h2>
+            </div>
+            <div class="monitor-status">
+              <button type="button" class="status-card" id="statusCardBtn" title="點擊查看熔斷規則">
+                <div class="status-kicker">Overall Status</div>
+                <h3 id="monitorOverall">黃燈</h3>
+                <p>允許繼續執行，但暫時限制探索任務。若連續兩次低於閾值，Coordinator 進入熔斷檢查。</p>
+              </button>
+              <button type="button" class="metric-card orange clickable" id="metricGoalBtn" title="點擊查看門檻"
+                data-title="Goal Alignment Score"
+                data-desc="任務是否仍服務北極星，採核心 / 支援 / 合規加權。"
+                data-warn="&lt; 70" data-stop="&lt; 50"
+                data-action="限制探索任務，產生偏離節點清單，要求 Coordinator 判斷。">
+                <div class="metric-kicker">Goal Alignment</div>
+                <div class="metric-value"><strong id="monitorGoal">68</strong><span>/ 100</span></div>
+                <div class="meter"><i id="monitorGoalMeter" style="width:68%"></i></div>
+                <p>核心、支援、合規任務加權後的目標對齊分數。低於 70 警告，低於 50 熔斷。</p>
+              </button>
+              <button type="button" class="metric-card blue clickable" id="metricEfficiencyBtn" title="點擊查看門檻"
+                data-title="Resource Efficiency Ratio"
+                data-desc="已驗收里程碑完成度 / 預算、時間、Token 消耗度。"
+                data-warn="&lt; 0.6" data-stop="&lt; 0.4"
+                data-action="降低並行、暫停非核心分支、把任務縮回最小可驗收路徑。">
+                <div class="metric-kicker">Resource Efficiency</div>
+                <div class="metric-value"><strong id="monitorEfficiency">0.58</strong><span>progress / cost</span></div>
+                <div class="meter"><i id="monitorEfficiencyMeter" style="width:58%"></i></div>
+                <p>核心里程碑完成度除以資源消耗度。低於 0.6 警告，低於 0.4 暫停。</p>
+              </button>
+              <article class="metric-card blue">
+                <div class="metric-kicker">Task Growth</div>
+                <div class="metric-value"><strong id="monitorGrowth">1.65</strong><span>new / done</span></div>
+                <div class="meter"><i id="monitorGrowthMeter" style="width:82%"></i></div>
+                <p>近 6 小時新增任務 / 完成任務。高於 1.8 代表任務長得比消化快。</p>
+              </article>
+            </div>
+
+            <div class="monitor-grid">
+              <div class="monitor-panel">
+                <h3 class="monitor-section-title">Live Signals</h3>
+                <div class="signal-list">
+                  <button type="button" class="signal-card orange" data-state="正常" data-title="硬邊界守門" data-desc="預算、時程、法規、安全、品牌底線不可被 Agent 修改。觸碰即 block action。"><div class="signal-icon"><svg viewBox="0 0 24 24"><path d="M12 3l8 4v6c0 4-3 7-8 8-5-1-8-4-8-8V7z"/></svg></div><div class="signal-title">硬邊界守門</div></button>
+                  <button type="button" class="signal-card blue" data-state="警告" data-title="對齊檢查" data-desc="獨立 Reviewer 讀北極星、任務摘要、分支回寫，輸出分數、理由、偏離節點。"><div class="signal-icon"><svg viewBox="0 0 24 24"><path d="M4 19h16M6 16l4-5 4 3 4-8"/></svg></div><div class="signal-title">對齊檢查</div></button>
+                  <button type="button" class="signal-card orange" data-state="觀察" data-title="重複失敗" data-desc="同一錯誤連續 3 次，升級模型或加入 Reviewer；同任務反覆重開則凍結拆解。"><div class="signal-icon"><svg viewBox="0 0 24 24"><path d="M5 5h14v14H5z"/><path d="M8 9h8M8 13h5"/></svg></div><div class="signal-title">重複失敗</div></button>
+                  <button type="button" class="signal-card blue" data-state="正常" data-title="toViking 資料健康" data-desc="檢查 snapshots 日期、silent source、fallback 使用、skipped/redline 與 dimensions 失衡。"><div class="signal-icon"><svg viewBox="0 0 24 24"><path d="M4 8h16v12H4z"/><path d="M4 8l3-4h7l3 4"/></svg></div><div class="signal-title">toViking 資料健康</div></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="monitor-table">
+              <div class="monitor-head"><div>Metric</div><div class="orange">Warn</div><div class="blue">Breaker</div><div>Auto Action</div></div>
+              <div class="monitor-row"><div class="monitor-cell"><strong>Goal Alignment Score</strong>任務是否仍服務北極星，採核心 / 支援 / 合規加權。</div><div class="monitor-cell orange"><span class="monitor-chip warn">&lt; 70</span></div><div class="monitor-cell blue"><span class="monitor-chip stop">&lt; 50</span></div><div class="monitor-cell">限制探索任務，產生偏離節點清單，要求 Coordinator 判斷。</div></div>
+              <div class="monitor-row"><div class="monitor-cell"><strong>Resource Efficiency Ratio</strong>已驗收里程碑完成度 / 預算、時間、Token 消耗度。</div><div class="monitor-cell orange"><span class="monitor-chip warn">&lt; 0.6</span></div><div class="monitor-cell blue"><span class="monitor-chip stop">&lt; 0.4</span></div><div class="monitor-cell">降低並行、暫停非核心分支、把任務縮回最小可驗收路徑。</div></div>
+              <div class="monitor-row"><div class="monitor-cell"><strong>Task Growth Health</strong>新增 / 完成比、核心任務佔比、分支深度異常。</div><div class="monitor-cell orange"><span class="monitor-chip warn">&gt; 1.8</span></div><div class="monitor-cell blue"><span class="monitor-chip stop">核心 &lt; 30%</span></div><div class="monitor-cell">凍結新任務建立，只允許完成、合併、刪除、歸檔。</div></div>
+              <div class="monitor-row"><div class="monitor-cell"><strong>Source Health</strong>toViking snapshot 新鮮度、silent source、fallback 與 skipped/redline。</div><div class="monitor-cell orange"><span class="monitor-chip warn">資料偏斜</span></div><div class="monitor-cell blue"><span class="monitor-chip stop">來源失效</span></div><div class="monitor-cell">停止 Y4 之後派工，回到 Y0-Y2 補資料或降低信心分數。</div></div>
+              <div class="monitor-row"><div class="monitor-cell"><strong>Authority Attempts</strong>Agent 嘗試越權修改範圍、預算、模型、合併或部署。</div><div class="monitor-cell orange"><span class="monitor-chip warn">記錄</span></div><div class="monitor-cell blue"><span class="monitor-chip stop">立即</span></div><div class="monitor-cell">block action，寫入 GateEvent，等待 L3 點子主人覆寫。</div></div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="modal">
+    <div class="modal">
+      <h3>動態 Graph · 圖例</h3>
+      <div class="l-row"><i style="background:#222"></i> 決策</div>
+      <div class="l-row"><i style="background:#9aa4ad"></i> 定義</div>
+      <div class="l-row"><i style="background:var(--warm)"></i> 產線</div>
+      <div class="l-row"><i style="background:var(--cool)"></i> 情報</div>
+      <div class="l-row"><i style="background:#5f7d9c"></i> 維修</div>
+      <div class="l-row"><span class="ln"></span> 正向流程</div>
+      <div class="l-row"><span class="lb"></span> 擋回 / 迴路</div>
+      <div class="l-row">⛨ 守門人（合約 / 審碼 / 驗證）</div>
+      <div class="l-row">L1 L2 L3 L4 徽章 = 這個工位被哪幾條 lane 走過（* = 有條件）</div>
+      <div class="desc">
+        四個直行，起點在最左，流程往右推進；每行內部由上往下。站位對齊 agent 名冊的五個分組（決策／研究／生產／品管／管控）：<br>
+        <strong>行 1 決策鏈</strong>（lane 無關）Y0 資料源 → scanner → appraiser⛨ → contract⛨ → director⛨。<br>
+        <strong>行 2 並行工位</strong>：這兩位橫向貼齊行 1 的對手，不是行 1 的下一步。<strong>archaeologist</strong> 與 scanner 並行（一個挖歷史、一個掃現況，共同餵鑑定）；<strong>interrogator</strong> 與 appraiser 對打（出價 → 攻擊 → 打回重估），是迴路不是關卡。<br>
+        <strong>行 3 產線</strong>：director 依 lane 的 emit schema 決定進場點 —— L2·L4 進總編、L3 進設計、L1 完全不進押注漏斗（gate 是「入圍即做」），scanner 掃完走頂部通道直通文案。<br>
+        <strong>行 4 文案 + 品管管控</strong>：copywriter 吃總編的產物規格、不吃 design artifact，所以與設計並行；reviewer⛨ → qa⛨ → investigator（追因）→ undertaker（歸檔）。漂移與資源效率讀數歸 director，因為那是調度層的資源問題。<br>
+        灰點線＝換行與 lane 分岔（結構性接續），紅虛線＝反向線（逼問打回、審查退回、追因回寫、歸檔回等待名單）。<br>
+        頂部 Agent 列表：點擊後開啟模型配置；圖面節點仍可直接點擊查看派工內容。
+      </div>
+      <pre class="tree">[Header]
+ ├── 標題「動態 Graph」
+ ├── 框架邊界（滑桿 × 3）
+ │    ├── 預算上限 → 圖框 綠/黃/紅
+ │    ├── 時程紅線
+ │    └── 並行上限
+ └── ⓘ 圖例與說明
+[頂部控制]
+ ├── 流程圖 / 分支 / 監測台 → 切換圖面分頁
+ ├── Agent 列表 → 開啟模型配置
+ └── 圖面節點 → 點擊查看派工彈窗[圖面]
+ ├── 16 節點 + 23 邊，四個直行，起點在最左
+ │    ├── 行1 決策鏈（5）    Y0 → 掃描 → 鑑定 → 合約 → 調度
+ │    ├── 行2 並行工位（2）  考古 / 逼問，與行 1 對打
+ │    ├── 行3 產線（4）      總編 → 設計 → 工程 → 落地頁
+ │    └── 行4 文案+品管（5） 文案 / 審查 → 把關 → 調查 → 禮儀師
+ ├── 實線   = 正向流程
+ ├── 灰點線 = 換行 / lane 分岔
+ └── 紅虛線 = 打回 / 退回 / 追因回寫 / 歸檔
+[彈窗]
+ └── 圖例與頁面結構</pre>
+      <button class="close" id="closeBtn">關閉</button>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="modalRule">
+    <div class="modal" style="width:520px">
+      <h3>Overall Status · 熔斷規則</h3>
+      <div class="desc" style="margin-top:0;padding-top:0;border-top:none">
+        <strong id="ruleStatusLabel">黃燈</strong> — <span id="ruleStatusDesc">允許繼續執行，但暫時限制探索任務。若連續兩次低於閾值，Coordinator 進入熔斷檢查。</span>
+      </div>
+      <article class="rule-card orange" style="margin-top:12px"><h3>立即阻擋</h3><ul><li>任何修改硬邊界的 action</li><li>未授權 merge / deploy</li><li>預算或時程紅線被突破</li></ul></article>
+      <article class="rule-card orange" style="margin-top:10px"><h3>黃色限制</h3><ul><li>Goal Alignment &lt; 70</li><li>Resource Efficiency &lt; 0.6</li><li>新增 / 完成比 &gt; 1.8</li><li>Owner interruption rate 過高</li></ul></article>
+      <article class="rule-card red" style="margin-top:10px"><h3>紅色熔斷</h3><ul><li>Goal Alignment &lt; 50</li><li>Resource Efficiency &lt; 0.4</li><li>核心任務佔比 &lt; 30%</li><li>越權嘗試短時間多次出現</li></ul></article>
+      <button class="close" id="ruleCloseBtn">關閉</button>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="modalSignal">
+    <div class="modal">
+      <h3 id="signalTitle"></h3>
+      <div class="l-row"><i id="signalStateDot" style="background:#8f98a3"></i> <span id="signalStateText"></span></div>
+      <div class="desc" id="signalDesc"></div>
+      <button class="close" id="signalCloseBtn">關閉</button>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="modalMetric">
+    <div class="modal">
+      <h3 id="metricTitle"></h3>
+      <div class="desc" id="metricDesc" style="margin-top:0;padding-top:0;border-top:none"></div>
+      <div class="monitor-row" style="margin-top:10px">
+        <div class="monitor-cell orange"><span class="monitor-chip warn" id="metricWarn"></span></div>
+        <div class="monitor-cell blue"><span class="monitor-chip stop" id="metricStop"></span></div>
+      </div>
+      <div class="desc" id="metricAction"></div>
+      <button class="close" id="metricCloseBtn">關閉</button>
+    </div>
+  </div>
+
+  <div class="apop" id="apop">
+    <div class="apop-head" id="apopHead">
+      <span class="apop-title" id="apopTitle"></span>
+      <button class="gear" id="apopClose" title="關閉">✕</button>
+    </div>
+    <div class="apop-body">
+      <div class="apop-desc" id="apopDesc"></div>
+      <div class="apop-binding" id="apopBinding"></div>
+      <div class="candidate-panel" id="candidatePanel"></div>
+      <button class="api-dispatch" id="apopDispatch">派工到 OpenClaw</button>
+      <div class="api-note" id="apopDispatchNote">送入本地 queue，不直接改 repo。</div>
+      <div class="apop-tags" id="apopTags"></div>
+      <div class="apop-add">
+        <input id="apopTagInput" placeholder="加 skill 標籤，如：寫碼" autocomplete="off">
+        <button class="add-btn" id="apopTagAdd">＋</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="drawer-mask" id="drawerMask"></div>
+  <aside class="drawer" id="drawer">
+    <div class="drawer-head">
+      <h3>Skills</h3>
+      <button class="gear" id="drawerClose" title="關閉">✕</button>
+    </div>
+    <div class="skill-list" id="skillList"></div>
+    <form class="skill-form" id="skillForm">
+      <input id="skName" placeholder="Skill 名稱" autocomplete="off">
+      <input id="skUrl" placeholder="https://github.com/owner/repo" autocomplete="off">
+      <button type="submit" class="add-btn">新增 Skill</button>
+    </form>
+    <div class="skill-foot" id="skillFoot"></div>
+    <button class="add-btn export-btn" id="exportBtn">匯出 skills.js 到資料夾</button>
+  </aside>
+
+  <div class="modal-mask" id="modalLlm">
+    <div class="modal">
+      <h3>LLM 配置 <span class="sub-h">存進目前頁籤</span></h3>
+      <div class="llm-list" id="llmList"></div>
+      <button class="close" id="closeLlm">關閉</button>
+    </div>
+  </div>
+
+  <script>
+    const LLMS = ["GPT-5.6 Sol", "DeepSeek", "Codex", "xAI", "K3"];
+    const LLM_SHORT = { "GPT-5.6 Sol": "CC", "DeepSeek": "DS", "Codex": "Cx", "xAI": "xAI", "K3": "K3" };
+    const LLM_COLOR = { "GPT-5.6 Sol": "#c46f12", "DeepSeek": "#2478d2", "Codex": "#5a6470", "xAI": "#111827", "K3": "#0d9488" };
+
+    // 版面：四個直行，起點在最左，流程往右推進。每行內部由上往下。
+    //   行 1 x=70   決策鏈：Y0 → Y1 掃描 → Y2 鑑定 → Y3 合約 → Y4 調度
+    //   行 2 x=330  並行工位：Y1 考古 / Y2 逼問，各自貼齊行 1 的對手（不是行 1 的下一步）
+    //   行 3 x=590  產線：總編 → 設計 → 工程 → 落地頁
+    //   行 4 x=850  文案 + 品管管控：文案 / 審查 → 把關 → 調查 → 禮儀師
+    // 行距 260（節點寬 160，行間留 100px 給換行走線）、列距 120（節點高 90，列間 30px）。
+    // 節點止於 x=1010 / y=660；右側 1010-1150、底部 660-760、頂部 0-90 是回程通道。
+    const BANDS = [
+      { label: "1 · 決策鏈", x: 70 },
+      { label: "2 · 並行工位", x: 330 },
+      { label: "3 · 產線", x: 590 },
+      { label: "4 · 文案 + 品管管控", x: 850 },
+    ];
+    const NODES = [
+      // ── 行 1：Y0 資料源 → 決策鏈（由上往下）
+      { id:"snapshot",     x:70,   y:90,  layer:"cool",  t:"Y0 每日簡報",  a:"toViking · 非 agent",  d:"資料源：S1 決策畫面產出帶 lane 的候選卡", model:"DeepSeek", lanes:["L1","L2","L3","L4"] },
+      { id:"scanner",      x:70,   y:210, layer:"cool",  t:"Y1 掃描",      a:"scanner",              d:"last30days 廣掃，看現在誰在做", model:"DeepSeek", lanes:["L1","L2","L3","L4"] },
+      { id:"appraiser",    x:70,   y:330, layer:"cool",  t:"Y2 鑑定",      a:"appraiser",            d:"出價：小注 / 等待 / 丟棄；Owner 最終確認", gate:true, model:"DeepSeek", lanes:["L2","L3","L4"] },
+      { id:"contract",     x:70,   y:450, layer:"gray",  t:"Y3 合約",      a:"contract",             d:"寫押注合約、成功條件與停損線", gate:true, model:"GPT-5.6 Sol", lanes:["L2","L3","L4"] },
+      { id:"director",     x:70,   y:570, layer:"ink",   t:"Y4 調度",      a:"director",             d:"派工＋Lane Router；監看漂移與資源效率", gate:true, model:"GPT-5.6 Sol", lanes:["L2","L3","L4"] },
+      // ── 行 2：兩個並行工位，橫向貼齊各自的對手，不接續行 1 往下走
+      //   考古 與 掃描 並行（一個挖歷史、一個掃現況），共同餵鑑定
+      //   逼問 與 鑑定 對打（鑑定出價、逼問攻擊、不服打回），是迴路不是關卡
+      { id:"archaeologist",x:330,  y:210, layer:"cool",  t:"Y1 考古",      a:"archaeologist",        d:"翻歷史：這題做過沒、為什麼死、死因還在不在", model:"DeepSeek", lanes:["L2","L3","L4"] },
+      { id:"interrogator", x:330,  y:330, layer:"cool",  t:"Y2 逼問",      a:"interrogator",         d:"紅隊挑戰鑑定結論，挖致命假設，不服打回", model:"GPT-5.6 Sol", lanes:["L2","L3","L4"] },
+      // ── 行 3：產線
+      { id:"editor",       x:590,  y:90,  layer:"gray",  t:"總編",         a:"editor",               d:"接調度單，定義要產什麼、誰做、驗收標準", model:"GPT-5.6 Sol", lanes:["L2","L4"] },
+      { id:"designer",     x:590,  y:210, layer:"warm",  t:"設計",         a:"designer",             d:"UI flow / token；L3 走商品包裝與 deliverables", model:"GPT-5.6 Sol", lanes:["L2","L3"] },
+      { id:"coder",        x:590,  y:330, layer:"warm",  t:"工程",         a:"coder",                d:"branch + worktree 施工；L3 僅 dev_kit 進場", model:"Codex", lanes:["L2","L3*"] },
+      { id:"builder",      x:590,  y:450, layer:"warm",  t:"落地頁",       a:"builder",              d:"landing page / prototype / demo package", model:"Codex", lanes:["L1","L2","L3","L4"] },
+      // ── 行 4：文案（吃總編規格，與設計並行）+ 品管管控四位
+      { id:"copywriter",   x:850,  y:90,  layer:"warm",  t:"文案",         a:"copywriter",           d:"L1 文章影片 / L3 listing / L4 offer，三種產物不同", model:"GPT-5.6 Sol", lanes:["L1","L3","L4"] },
+      { id:"reviewer",     x:850,  y:210, layer:"warm",  t:"審查",         a:"reviewer",             d:"審碼、合併前守門、風險回寫", gate:true, model:"GPT-5.6 Sol", lanes:["L2","L3*"] },
+      { id:"qa",           x:850,  y:330, layer:"warm",  t:"把關",         a:"qa",                   d:"測試、訊號驗收、是否達成 Y3 合約", gate:true, model:"GPT-5.6 Sol", lanes:["L2","L3"] },
+      { id:"investigator", x:850,  y:450, layer:"slate", t:"調查",         a:"investigator",         d:"沒達成合約就追因：題目錯、時機錯還是執行錯", model:"GPT-5.6 Sol", lanes:["L1","L2","L3","L4"] },
+      { id:"undertaker",   x:850,  y:570, layer:"cool",  t:"禮儀師",       a:"undertaker",           d:"停損、歸檔、回等待名單", model:"DeepSeek", lanes:["L1","L2","L3","L4"] },
+    ];
+    const EXECUTION_BINDINGS = {
+      snapshot: {
+        kind: "Daily Brief",
+        executor: "toViking",
+        model: "DeepSeek",
+        branch: "research/toviking-daily-brief",
+        worktree: "不需要",
+        input: "SQLite 今日總結 + DeepSeek advice + 最新 snapshot",
+        evidenceRoom: "toViking SQLite Room / Snapshot Room",
+        output: "Candidate Cards"
+      },
+      scanner: {
+        kind: "Evidence Check",
+        executor: "OpenClaw",
+        model: "DeepSeek",
+        branch: "research/last30days-evidence-check",
+        skill: "last30days（resolve backend 待接 anysearch-skill）",
+        worktree: "不需要",
+        input: "你在 Y0 選的候選卡",
+        evidenceRoom: "last30days Evidence Room + SQLite raw rows",
+        route: "證據檔必須主題對得上，否則回 needs_run —— Y2 的 SMALL_BET 靠這個把關",
+        output: "Y1 Evidence Report（現況面）"
+      },
+      archaeologist: {
+        kind: "Historical Dig",
+        executor: "OpenClaw",
+        model: "DeepSeek",
+        branch: "research/prior-art-dig",
+        skill: "anysearch-skill",
+        worktree: "不需要",
+        input: "與 scanner 同一張候選卡（兩條研究線並行）",
+        evidenceRoom: "SQLite 全期 raw rows + AnySearch 站外抽取",
+        route: "無時間窗：找已停更 repo、post-mortem、舊 HN 討論 —— 這些 last30days 的 30 天窗看不到",
+        output: "Prior Art Report：做過沒 / 死因 / 死因是否已消失"
+      },
+      appraiser: {
+        kind: "Bet Recommendation",
+        executor: "AI Appraiser",
+        model: "DeepSeek",
+        branch: "decision/opportunity-appraisal",
+        worktree: "不需要",
+        input: "Y1 Evidence Report",
+        evidenceRoom: "Y1 result + toViking summary",
+        authority: "L3 Owner Confirm",
+        output: "小注 / 等待 / 丟棄 / 再查"
+      },
+      contract: {
+        kind: "Bayesian Bet Contract",
+        executor: "Claude Terminal",
+        model: "GPT-5.6 Sol",
+        branch: "contract/bayesian-bet",
+        skill: "yao-bayesian-skill",
+        worktree: "不需要",
+        input: "Y1 evidence + Y2 recommendation",
+        authority: "L3 Owner Confirm",
+        output: "Prior / Posterior / Success Criteria / Stop Loss"
+      },
+      director: {
+        kind: "Dispatch + Lane Router",
+        executor: "12tree / ClawBuilders",
+        model: "GPT-5.6 Sol",
+        branch: "orchestration/dispatch-plan",
+        worktree: "不需要",
+        input: "Y1 evidence + prior art + Y2 appraisal + Y3 contract",
+        route: "L2·L4 → 總編 ／ L3 → 設計 ／ L1 不進此節點（Y1 直通文案）",
+        authority: "L3 Owner Confirm",
+        output: "Task Graph + Branch/Worktree Dispatch Plan + 漂移/資源效率讀數"
+      },
+      editor: {
+        kind: "Production Brief",
+        executor: "Claude Terminal",
+        model: "GPT-5.6 Sol",
+        branch: "planning/production-brief",
+        worktree: "文件工位",
+        input: "調度單 + 候選卡的 lane emit schema",
+        output: "產物清單 / 分工 / 驗收標準（等同 PRD）"
+      },
+      interrogator: {
+        kind: "Red Team Challenge",
+        executor: "Claude Terminal",
+        model: "GPT-5.6 Sol",
+        branch: "decision/red-team-challenge",
+        worktree: "不需要",
+        input: "Y2 鑑定結論 + Y1 evidence + prior art",
+        evidenceRoom: "Y1/Y2 result",
+        output: "致命假設清單 / 通過 or 打回重估"
+      },
+      designer: {
+        kind: "Design Artifact",
+        executor: "Claude Terminal / Design Agent",
+        model: "GPT-5.6 Sol",
+        branch: "design/ui-flow",
+        worktree: "不需要",
+        input: "Director Scope + PRD Contract"
+      },
+      copywriter: {
+        kind: "Copy / SEO",
+        executor: "Claude Terminal",
+        model: "GPT-5.6 Sol",
+        branch: "content/landing-copy",
+        worktree: "不需要",
+        input: "Positioning + evidence + MVP offer"
+      },
+      coder: {
+        kind: "Code Execution",
+        executor: "Codex",
+        model: "Codex",
+        branch: "feature/implementation-task",
+        worktree: "獨立施工工位",
+        input: "PRD + design artifact + acceptance criteria"
+      },
+      builder: {
+        kind: "Prototype Build",
+        executor: "Codex / OpenClaw",
+        model: "Codex",
+        branch: "feature/mvp-prototype",
+        worktree: "獨立施工工位",
+        input: "Coder output + demo package plan"
+      },
+      reviewer: {
+        kind: "Review Gate",
+        executor: "Codex",
+        model: "GPT-5.6 Sol",
+        branch: "review/implementation-task",
+        worktree: "審查工位",
+        authority: "L2 Merge Gate"
+      },
+      qa: {
+        kind: "Validation",
+        executor: "Codex + Browser",
+        model: "GPT-5.6 Sol",
+        branch: "qa/signal-validation",
+        worktree: "驗收工位",
+        input: "Y3 success criteria + prototype"
+      },
+      investigator: {
+        kind: "Post-mortem",
+        executor: "OpenClaw + toViking",
+        model: "GPT-5.6 Sol",
+        branch: "diagnose/bet-postmortem",
+        worktree: "不需要",
+        input: "QA 驗收結果 + Y3 合約 + toViking history",
+        evidenceRoom: "Graph metrics + 多日 snapshot",
+        output: "失敗歸因（題目 / 時機 / 執行）→ 送歸檔 or 回寫調度"
+      },
+      undertaker: {
+        kind: "Stop / Archive",
+        executor: "12tree Coordinator",
+        model: "DeepSeek",
+        branch: "archive/stopped-bet",
+        worktree: "不需要",
+        input: "Y3 stop loss or QA failed signal"
+      }
+    };
+    // [from, to, kind, path, label?, labelX?, labelY?]
+    //   kind 0 = 正向流程（實線灰）
+    //   kind 1 = 擋回 / 迴路（紅虛線）—— 全圖唯一的反向線，刻意讓它跳出來
+    //   kind 2 = 換帶 / lane 分岔（灰點線）—— 結構性接續，不是回饋
+    const EDGES = [
+      // ── 行 1 內部：由上往下
+      ["snapshot","scanner",0,"M 150 180 L 150 210"],
+      ["scanner","appraiser",0,"M 150 300 L 150 330"],
+      ["appraiser","contract",0,"M 150 420 L 150 450"],
+      ["contract","director",0,"M 150 540 L 150 570"],
+      // ── 行 1 ↔ 行 2：掃描橫向下放考古，考古回餵鑑定（兩條研究線並行）
+      ["scanner","archaeologist",0,"M 230 255 L 330 255"],
+      ["archaeologist","appraiser",0,"M 370 300 L 370 315 L 200 315 L 200 330"],
+      // ── 鑑定 ↔ 逼問 對抗迴路：出價 → 攻擊 → 打回重估，不是序列關卡
+      ["appraiser","interrogator",0,"M 230 375 L 330 375"],
+      ["interrogator","appraiser",1,"M 410 420 L 410 435 L 180 435 L 180 420"],
+      // ── Lane Router 分岔：調度依 lane 的 emit schema 決定進場點
+      ["director","editor",2,"M 190 660 L 190 680 L 540 680 L 540 135 L 590 135","L2 · L4",300,674],
+      ["director","designer",2,"M 230 615 L 510 615 L 510 255 L 590 255","L3",340,609],
+      // L1 gate 是「入圍即做」，不進 Y2-Y4 押注漏斗，掃完直接寫。走頂部通道跳過整條決策鏈。
+      ["scanner","copywriter",2,"M 230 225 L 270 225 L 270 64 L 930 64 L 930 90","L1 直通",560,58],
+      // ── 行 3 內部：由上往下
+      ["editor","designer",0,"M 670 180 L 670 210"],
+      ["designer","coder",0,"M 670 300 L 670 330"],
+      ["coder","builder",0,"M 670 420 L 670 450"],
+      // 文案吃總編的產物規格，不吃 design artifact，所以與設計並行而非串行
+      ["editor","copywriter",0,"M 750 135 L 850 135"],
+      // 文案在行 4、落地頁在行 3，這條是往回走的線：繞最外圈右通道再從底部回到行 3
+      ["copywriter","builder",2,"M 1010 135 L 1110 135 L 1110 730 L 560 730 L 560 495 L 590 495"],
+      // ── 行 3 → 行 4
+      ["builder","reviewer",2,"M 750 495 L 800 495 L 800 255 L 850 255"],
+      // ── 行 4 內部：由上往下
+      ["reviewer","qa",0,"M 930 300 L 930 330"],
+      ["qa","investigator",0,"M 930 420 L 930 450"],
+      ["investigator","undertaker",0,"M 930 540 L 930 570"],
+      // ── 回饋線（紅虛線）：全圖僅此四條反向
+      ["reviewer","coder",1,"M 850 285 L 830 285 L 830 375 L 750 375"],
+      ["investigator","director",1,"M 850 495 L 820 495 L 820 700 L 110 700 L 110 660"],
+      ["undertaker","appraiser",1,"M 1010 615 L 1080 615 L 1080 40 L 30 40 L 30 375 L 70 375"],
+    ];
+    const cs = getComputedStyle(document.documentElement);
+
+    const $ = s => document.querySelector(s);
+    const wires = $("#wires"), nodesEl = $("#nodes"), side = $("#side");
+    const chart = $("#chart");
+    const OPENCLAW_API = localStorage.getItem("openclaw-api") || "http://127.0.0.1:8787";
+    const openclawStatus = $("#openclawStatus");
+    function setOpenClawStatus(state, label) {
+      if (!openclawStatus) return;
+      openclawStatus.classList.toggle("on", state === "on");
+      openclawStatus.classList.toggle("pending", state === "pending");
+      openclawStatus.textContent = label;
+    }
+    async function openclawFetch(path, options = {}) {
+      const res = await fetch(OPENCLAW_API + path, {
+        ...options,
+        headers: { "Content-Type": "application/json", ...(options.headers || {}) }
+      });
+      if (!res.ok) throw new Error(`OpenClaw ${res.status}`);
+      return res.json();
+    }
+    function paintMonitor(metrics) {
+      if (!metrics) return;
+      const label = metrics.status === "green" ? "綠燈" : metrics.status === "red" ? "紅燈" : "黃燈";
+      const overall = $("#monitorOverall");
+      if (overall) overall.textContent = label;
+      const goal = $("#monitorGoal"), goalMeter = $("#monitorGoalMeter");
+      if (goal) goal.textContent = metrics.goalAlignment;
+      if (goalMeter) goalMeter.style.width = Math.max(0, Math.min(100, metrics.goalAlignment || 0)) + "%";
+      const eff = $("#monitorEfficiency"), effMeter = $("#monitorEfficiencyMeter");
+      if (eff) eff.textContent = metrics.resourceEfficiency;
+      if (effMeter) effMeter.style.width = Math.max(0, Math.min(100, (metrics.resourceEfficiency || 0) * 100)) + "%";
+      const growth = $("#monitorGrowth"), growthMeter = $("#monitorGrowthMeter");
+      if (growth) growth.textContent = metrics.taskGrowthRatio;
+      if (growthMeter) growthMeter.style.width = Math.max(0, Math.min(100, ((metrics.taskGrowthRatio || 0) / 2) * 100)) + "%";
+    }
+    async function refreshOpenClawGraph() {
+      const graph = await openclawFetch("/api/graph");
+      paintMonitor(graph.metrics);
+      return graph;
+    }
+    async function refreshOpenClawStatus() {
+      try {
+        const data = await openclawFetch("/api/health");
+        setOpenClawStatus("on", `OpenClaw: ${data.port}`);
+        await refreshOpenClawGraph();
+      } catch (err) {
+        setOpenClawStatus("off", "OpenClaw: 未連線");
+      }
+    }
+
+
+    function localToday() {
+      const d = new Date();
+      d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+      return d.toISOString().slice(0, 10);
+    }
+    const tovikingDate = $("#tovikingDate");
+    const tovikingRefresh = $("#tovikingRefresh");
+    if (tovikingDate) {
+      tovikingDate.value = localStorage.getItem("toviking-date") || tovikingDate.value || localToday();
+      tovikingDate.addEventListener("change", () => localStorage.setItem("toviking-date", tovikingDate.value));
+    }
+    async function refreshToVikingDailyBrief() {
+      if (!tovikingRefresh) return;
+      const date = tovikingDate?.value || localToday();
+      localStorage.setItem("toviking-date", date);
+      tovikingRefresh.disabled = true;
+      tovikingRefresh.textContent = "刷新中";
+      try {
+        const data = await openclawFetch("/api/dispatch", {
+          method: "POST",
+          body: JSON.stringify({
+            nodeId: "snapshot",
+            title: `Y0 Daily Brief: ${date}`,
+            task: `讀取 toViking ${date} 資料並產生候選卡`,
+            executor: "toViking",
+            modelRoute: "DeepSeek",
+            branch: "research/toviking-daily-brief",
+            worktreeType: "不需要",
+            input: {
+              date,
+              snapshot: "M:/Github-opendesign/toViking/snapshots/<date>.json",
+              source: "home-toviking-refresh"
+            }
+          })
+        });
+        setOpenClawStatus("on", `Y0 已派工：${date}`);
+        const run = await openclawFetch("/api/worker/run-task", { method: "POST", body: JSON.stringify({ id: data.task.id }) });
+        if (run.ran && run.result?.status === "completed") setOpenClawStatus("on", `Y0 已刷新：${date}`);
+        else if (run.ran) setOpenClawStatus("pending", `Y0 等待：${run.task.executor}`);
+        await refreshOpenClawGraph();
+        if (apopId === "snapshot") await loadCandidateCardsForPopup();
+      } catch (err) {
+        setOpenClawStatus("off", `toViking 讀取失敗：${date}`);
+      } finally {
+        tovikingRefresh.disabled = false;
+        tovikingRefresh.textContent = "刷新資料";
+      }
+    }
+    if (tovikingRefresh) tovikingRefresh.addEventListener("click", refreshToVikingDailyBrief);
+
+    // ---- view tabs: flow / branch-worktree ----
+    document.querySelectorAll(".viewtab").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const view = btn.dataset.view;
+        document.querySelectorAll(".viewtab").forEach(item => {
+          const on = item === btn;
+          item.classList.toggle("active", on);
+          item.setAttribute("aria-selected", on ? "true" : "false");
+        });
+        document.querySelectorAll(".graph-view").forEach(panel => panel.classList.remove("active"));
+        const target = { flow: "flowView", branch: "branchView", monitor: "monitorView" }[view] || "flowView";
+        document.getElementById(target).classList.add("active");
+      });
+    });
+    // ---- band labels（決策 / 產線 / 治理三層的分隔）----
+    const ALL_LANES = ["L1", "L2", "L3", "L4"];
+    BANDS.forEach(band => {
+      // 直行版面：標籤掛在每一行正上方。不畫分隔線 —— 行與行之間本來就有 100px 空白，
+      // 再加一條豎線只會跟走線的換行通道打架。
+      const label = document.createElement("div");
+      label.className = "band-label";
+      label.style.left = band.x + "px";
+      label.style.top = "8px";
+      label.textContent = band.label;
+      nodesEl.appendChild(label);
+    });
+
+    // ---- nodes ----
+    const nodeEls = {};
+    NODES.forEach((n, i) => {
+      const div = document.createElement("div");
+      div.className = `gnode l-${n.layer}${n.gate ? " gate" : ""}`;
+      div.dataset.id = n.id;
+      div.style.left = n.x + "px"; div.style.top = n.y + "px";
+      div.style.setProperty("--i", i);
+      // lane 徽章：四格全畫，走得到的亮起來，一眼看出這工位服務哪幾條 lane
+      const lanes = n.lanes || [];
+      const laneHtml = ALL_LANES.map(key => {
+        const hit = lanes.find(entry => entry.startsWith(key));
+        return `<span class="${hit ? "on" : ""}">${hit || key}</span>`;
+      }).join("");
+      div.innerHTML = `<div class="t"><span class="lb">${n.gate ? "⛨ " : ""}${n.t}</span><span class="m" style="background:${LLM_COLOR[n.model]}">${LLM_SHORT[n.model]}</span></div><div class="a">${n.a}</div><div class="d">${n.d}</div><div class="lanes">${laneHtml}</div>`;
+      nodesEl.appendChild(div);
+      nodeEls[n.id] = div;
+    });
+
+    // ---- edges ----
+    const EDGE_CLASS = { 0: "edge", 1: "edge back", 2: "edge wrap" };
+    const EDGE_STROKE = { 0: "#6b7680", 1: "var(--red)", 2: "var(--soft)" };
+    const pathedges = [];
+    EDGES.forEach(([f, t, kind, d, label, lx, ly], i) => {
+      const el = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      el.setAttribute("d", d);
+      el.setAttribute("class", EDGE_CLASS[kind] || "edge");
+      el.setAttribute("stroke", EDGE_STROKE[kind] || "#6b7680");
+      el.setAttribute("marker-end", kind === 1 ? "url(#arrBack)" : "url(#arr)");
+      el.setAttribute("pathLength", 1);
+      el.style.setProperty("--ei", i);
+      wires.appendChild(el);
+      let labelEl = null;
+      if (label) {
+        labelEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        labelEl.setAttribute("class", "elabel");
+        labelEl.setAttribute("x", lx);
+        labelEl.setAttribute("y", ly);
+        labelEl.textContent = label;
+        wires.appendChild(labelEl);
+      }
+      pathedges.push({ el, labelEl, from: f, to: t, back: kind === 1 });
+    });
+
+    // ---- agent side bar ----
+    const rowEls = {};
+    NODES.forEach(n => {
+      const row = document.createElement("div");
+      row.className = "agent-row";
+      // --rc 用 var 引用，theme 切換自動跟隨
+      const LAYER_VAR = { ink: "--ink", gray: "--lg", warm: "--warm", cool: "--cool", slate: "--ls" };
+      row.style.setProperty("--rc", "var(" + LAYER_VAR[n.layer] + ")");
+      row.innerHTML = `<div class="at"><span class="an">${n.gate ? "⛨ " : ""}${n.t} · ${n.a}</span><span class="am" style="background:${LLM_COLOR[n.model]}">${LLM_SHORT[n.model]}</span></div>`;
+      row.title = n.d;
+      side.appendChild(row);
+      rowEls[n.id] = row;
+      row.addEventListener("mouseenter", () => setActive(n.id));
+      row.addEventListener("mouseleave", () => { if (!pin) setActive(null); });
+      row.addEventListener("click", () => openApop(n.id));
+    });
+
+    // ---- 多配置頁籤（localStorage 持久化）----
+    const cfgbar = $("#cfgbar");
+    let configs = [];
+    let curCfg = 0;
+    try { configs = JSON.parse(localStorage.getItem("dg-configs")) || []; } catch (e) { configs = []; }
+    if (!configs.length) {
+      configs.push({ name: "預設", agents: Object.fromEntries(NODES.map(n => [n.id, n.model])), budget: 80, time: 30, para: 4 });
+    }
+    function saveCfg() { try { localStorage.setItem("dg-configs", JSON.stringify(configs)); } catch (e) {} }
+    function renderCfgBar() {
+      cfgbar.innerHTML = `<div class="cfg-title">配置</div><button class="cfg-add" id="cfgAdd" title="新增配置">+</button>` +
+        configs.map((c, i) =>
+          `<div class="cfg-row${i === curCfg ? " active" : ""}" data-i="${i}">
+             <button class="cfg-pill${i === curCfg ? " active" : ""}" data-i="${i}">${c.name}</button>
+             <button class="cfg-edit" data-i="${i}" title="改名">✎</button>
+           </div>`).join("");
+      cfgbar.querySelectorAll(".cfg-pill[data-i]").forEach(b =>
+        b.addEventListener("click", () => applyCfg(+b.dataset.i)));
+      cfgbar.querySelectorAll(".cfg-edit").forEach(b =>
+        b.addEventListener("click", () => startRename(+b.dataset.i)));
+      $("#cfgAdd").addEventListener("click", startAddCfg);
+    }
+    function startAddCfg() {
+      const box = document.createElement("input");
+      box.className = "cfg-input";
+      box.placeholder = "配置名稱，Enter 建立";
+      cfgbar.prepend(box);
+      $("#cfgAdd").style.display = "none";
+      box.focus();
+      let done = false;
+      const finish = () => { if (!done) { done = true; renderCfgBar(); } };
+      box.addEventListener("keydown", e => {
+        if (e.key === "Enter") {
+          addCfg(box.value.trim() || ("配置 " + (configs.length + 1)));
+          finish();
+        } else if (e.key === "Escape") finish();
+      });
+      box.addEventListener("blur", finish);
+    }
+    function startRename(i) {
+      const row = cfgbar.querySelector(`.cfg-row[data-i="${i}"]`);
+      if (!row) return;
+      const box = document.createElement("input");
+      box.className = "cfg-input";
+      box.value = configs[i].name;
+      row.innerHTML = "";
+      row.appendChild(box);
+      box.focus(); box.select();
+      let done = false;
+      const finish = (save) => {
+        if (done) return; done = true;
+        if (save && box.value.trim()) { configs[i].name = box.value.trim(); saveCfg(); }
+        renderCfgBar();
+      };
+      box.addEventListener("keydown", e => {
+        if (e.key === "Enter") finish(true);
+        else if (e.key === "Escape") finish(false);
+      });
+      box.addEventListener("blur", () => finish(true));
+    }
+    function addCfg(name) {
+      const c = configs[curCfg];
+      configs.push({ name, agents: { ...c.agents }, budget: c.budget, time: c.time, para: c.para });
+      saveCfg();
+      applyCfg(configs.length - 1);
+    }
+    function applyCfg(i) {
+      curCfg = i;
+      const c = configs[i];
+      NODES.forEach(n => setModel(n.id, c.agents[n.id] || n.model, true));
+      $("#slBudget").value = c.budget; $("#slTime").value = c.time; $("#slPara").value = c.para;
+      syncSliders();
+      renderCfgBar();
+      refresh();
+
+    }
+
+    // ---- LLM 切換（silent = 不寫入配置，供 applyCfg 用）----
+    function setModel(id, m, silent) {
+      const n = NODES.find(x => x.id === id);
+      if (!n) return;
+      n.model = m;
+      const badge = nodeEls[id].querySelector(".m");
+      badge.textContent = LLM_SHORT[m];
+      badge.style.background = LLM_COLOR[m];
+      const am = rowEls[id].querySelector(".am");
+      am.textContent = LLM_SHORT[m];
+      am.style.background = LLM_COLOR[m];
+      if (!silent) { configs[curCfg].agents[id] = m; saveCfg(); }
+    }
+
+    // ---- LLM 配置彈窗 ----
+    const llmList = $("#llmList");
+    function renderLlmModal() {
+      llmList.innerHTML = "";
+      NODES.forEach(n => {
+        const row = document.createElement("div");
+        row.className = "llm-row";
+        row.innerHTML = `<span>${n.gate ? "⛨ " : ""}${n.t} · ${n.a}</span><div class="opts">${
+          LLMS.map(m => `<button data-m="${m}" class="${m === n.model ? "on" : ""}" style="${m === n.model ? `background:${LLM_COLOR[m]}` : ""}">${LLM_SHORT[m]}</button>`).join("")}</div>`;
+        row.querySelectorAll(".opts button").forEach(b =>
+          b.addEventListener("click", () => {
+            setModel(n.id, b.dataset.m);
+            row.querySelectorAll(".opts button").forEach(x => {
+              const on = x.dataset.m === b.dataset.m;
+              x.classList.toggle("on", on);
+              x.style.background = on ? LLM_COLOR[x.dataset.m] : "";
+            });
+          }));
+        llmList.appendChild(row);
+      });
+    }
+    $("#llmBtn").addEventListener("click", () => { renderLlmModal(); $("#modalLlm").classList.add("open"); });
+    $("#closeLlm").addEventListener("click", () => $("#modalLlm").classList.remove("open"));
+    $("#modalLlm").addEventListener("click", e => { if (e.target === $("#modalLlm")) $("#modalLlm").classList.remove("open"); });
+
+    // ---- graph node events ----
+    let pin = null;
+    Object.entries(nodeEls).forEach(([id, el]) => {
+      el.addEventListener("mouseenter", () => setActive(id));
+      el.addEventListener("mouseleave", () => { if (!pin) setActive(null); });
+      el.addEventListener("click", () => openApop(id));
+    });
+
+    function setActive(id) {
+      if (pin) return; // pinned wins
+      active = id; refresh();
+    }
+    let active = null;
+
+    function refresh() {
+      const a = pin || active;
+      Object.entries(nodeEls).forEach(([id, el]) => {
+        const linked = a && (id === a || EDGES.some(([f, t]) => (f === a && t === id) || (t === a && f === id)));
+        el.classList.toggle("dim", !!a && !linked);
+        el.classList.toggle("pinned", pin === id);
+      });
+      Object.entries(rowEls).forEach(([id, row]) => {
+        const linked = a && (id === a || EDGES.some(([f, t]) => (f === a && t === id) || (t === a && f === id)));
+        row.classList.toggle("dim", !!a && !linked);
+        row.classList.toggle("active", a === id);
+      });
+      pathedges.forEach(p => {
+        const on = !a || p.from === a || p.to === a;
+        const hit = a && (p.from === a || p.to === a);
+        const base = p.el.classList.contains("wrap") ? 1.5 : 2;
+        p.el.style.opacity = on ? 1 : .08;
+        p.el.style.strokeWidth = hit ? 3.2 : base;
+        if (p.labelEl) p.labelEl.style.opacity = on ? 1 : .08;
+      });
+    }
+
+    // ---- LLM switch (removed: superseded by setModel above) ----
+
+    // ---- theme toggle（黑/白切換，localStorage 記憶，預設跟系統）----
+    const themeBtn = $("#themeBtn");
+    function currentTheme() {
+      const attr = document.documentElement.getAttribute("data-theme");
+      if (attr) return attr;
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    function updateThemeBtn() {
+      themeBtn.textContent = currentTheme() === "dark" ? "☀ 淺色" : "☾ 深色";
+    }
+    (() => {
+      const saved = localStorage.getItem("dg-theme");
+      if (saved === "dark" || saved === "light") document.documentElement.setAttribute("data-theme", saved);
+      updateThemeBtn();
+    })();
+    themeBtn.addEventListener("click", () => {
+      const next = currentTheme() === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      localStorage.setItem("dg-theme", next);
+      updateThemeBtn();
+    });
+
+    // ---- 框架邊界 sliders（同步 + 寫入目前配置）----
+    function syncSliders() {
+      const b = +$("#slBudget").value, t = +$("#slTime").value, p = +$("#slPara").value;
+      $("#vBudget").textContent = b + "%";
+      $("#vTime").textContent = t + " 天";
+      $("#vPara").textContent = p;
+      const note = $("#budNote");
+      chart.classList.toggle("b-warn", b < 70 && b >= 40);
+      chart.classList.toggle("b-bad", b < 40);
+      note.textContent = b >= 70 ? "預算健康（綠）" : b >= 40 ? "預算黃燈：先砍探索任務" : "熔斷：回收並行任務，縮回單一 Agent";
+    }
+    ["slBudget", "slTime", "slPara"].forEach(id => {
+      const sl = $("#" + id);
+      sl.addEventListener("input", () => {
+        syncSliders();
+        configs[curCfg].budget = +$("#slBudget").value;
+        configs[curCfg].time = +$("#slTime").value;
+        configs[curCfg].para = +$("#slPara").value;
+        saveCfg();
+      });
+    });
+
+    // ---- 框架邊界 sliders ----
+    $("#infoBtn").addEventListener("click", () => $("#modal").classList.add("open"));
+    $("#closeBtn").addEventListener("click", () => $("#modal").classList.remove("open"));
+    $("#statusCardBtn").addEventListener("click", () => {
+      $("#ruleStatusLabel").textContent = $("#monitorOverall").textContent;
+      $("#ruleStatusDesc").textContent = $("#statusCardBtn p").textContent;
+      $("#modalRule").classList.add("open");
+    });
+    $("#ruleCloseBtn").addEventListener("click", () => $("#modalRule").classList.remove("open"));
+    $("#modalRule").addEventListener("click", e => { if (e.target.id === "modalRule") $("#modalRule").classList.remove("open"); });
+
+    // ---- Metric 卡片：點擊查看門檻與自動動作 ----
+    document.querySelectorAll(".metric-card.clickable").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const { title, desc, warn, stop, action } = btn.dataset;
+        $("#metricTitle").textContent = title;
+        $("#metricDesc").textContent = desc;
+        $("#metricWarn").textContent = warn;
+        $("#metricStop").textContent = stop;
+        $("#metricAction").textContent = action;
+        $("#modalMetric").classList.add("open");
+      });
+    });
+    $("#metricCloseBtn").addEventListener("click", () => $("#modalMetric").classList.remove("open"));
+    $("#modalMetric").addEventListener("click", e => { if (e.target.id === "modalMetric") $("#modalMetric").classList.remove("open"); });
+
+    // ---- Live Signals：圓形圖示，點擊才跳出說明 ----
+    const STATE_DOT = { "正常": "#3a9d5d", "警告": "var(--warm)", "觀察": "#8f98a3", "熔斷": "var(--red)" };
+    document.querySelectorAll(".signal-card").forEach(card => {
+      card.addEventListener("click", () => {
+        const { title, state, desc } = card.dataset;
+        $("#signalTitle").textContent = title;
+        $("#signalStateText").textContent = "狀態：" + state;
+        $("#signalStateDot").style.background = STATE_DOT[state] || "#8f98a3";
+        $("#signalDesc").textContent = desc;
+        $("#modalSignal").classList.add("open");
+      });
+    });
+    $("#signalCloseBtn").addEventListener("click", () => $("#modalSignal").classList.remove("open"));
+    $("#modalSignal").addEventListener("click", e => { if (e.target.id === "modalSignal") $("#modalSignal").classList.remove("open"); });
+    $("#modal").addEventListener("click", e => { if (e.target === $("#modal")) $("#modal").classList.remove("open"); });
+
+    renderCfgBar();
+    applyCfg(0);
+
+    // ---- Agent 功能彈窗（可移動 + skill 標籤）----
+    const apop = $("#apop"), apopTitle = $("#apopTitle"), apopDesc = $("#apopDesc"), apopBinding = $("#apopBinding"), apopTags = $("#apopTags"), apopTagInput = $("#apopTagInput"), apopDispatch = $("#apopDispatch"), apopDispatchNote = $("#apopDispatchNote"), candidatePanel = $("#candidatePanel");
+    let apopId = null;
+    function saveAgentTags() { saveSkills(); }
+    function renderApopTags() {
+      const tags = agentTags[apopId] || [];
+      apopTags.innerHTML = tags.length
+        ? tags.map((t, i) => `<span class="apop-tag">${t}<button data-i="${i}" title="移除">✕</button></span>`).join("")
+        : `<span class="apop-tag" style="border-style:dashed;background:transparent;color:var(--soft)">還沒有標籤</span>`;
+      apopTags.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+        agentTags[apopId].splice(+b.dataset.i, 1);
+        if (!agentTags[apopId].length) delete agentTags[apopId];
+        saveAgentTags(); renderApopTags();
+      }));
+    }
+    function escHtml(value) {
+      return String(value ?? "").replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[ch]));
+    }
+    function renderY1NextStep(card, button, run) {
+      const parent = button.closest(".candidate-card");
+      if (!parent) return;
+      parent.querySelectorAll(".candidate-next").forEach(el => el.remove());
+      const panel = document.createElement("div");
+      panel.className = "candidate-next";
+      const summary = run.result?.summary || "Y1 已完成，但沒有回傳摘要。";
+      panel.innerHTML = `<strong>Y1 Evidence Report</strong><pre>${escHtml(summary.split("\n").slice(0, 12).join("\n"))}</pre><button class="candidate-select y2-send" type="button">送 Y2 Appraisal</button>`;
+      parent.appendChild(panel);
+      panel.querySelector(".y2-send").addEventListener("click", () => dispatchY2Appraisal(card, run, panel.querySelector(".y2-send")));
+    }
+    async function dispatchY2Appraisal(card, y1Run, button) {
+      button.disabled = true;
+      button.textContent = "派到 Y2...";
+      try {
+        const payload = {
+          nodeId: "appraiser",
+          title: `Y2 Appraisal: ${card.topic}`,
+          task: `根據 Y1 evidence 判斷候選是否小注、等待、丟棄或再查：${card.topic}`,
+          executor: "AI Appraiser",
+          modelRoute: "DeepSeek",
+          branch: "decision/opportunity-appraisal",
+          worktreeType: "不需要",
+          input: {
+            candidate: card,
+            y1TaskId: y1Run.task?.id || null,
+            y1ResultFile: y1Run.result?.resultFile || null,
+            y1Summary: y1Run.result?.summary || "",
+            date: tovikingDate?.value || localToday(),
+            source: "y1-next-step"
+          }
+        };
+        const data = await openclawFetch("/api/dispatch", { method: "POST", body: JSON.stringify(payload) });
+        apopDispatchNote.textContent = `已送 Y2：${data.task.id}`;
+        const run = await openclawFetch("/api/worker/run-task", { method: "POST", body: JSON.stringify({ id: data.task.id }) });
+        if (run.ran && run.result?.status === "completed") {
+          button.textContent = "Y2 已完成";
+          const pre = button.parentElement.querySelector("pre");
+          if (pre) pre.textContent = run.result.summary || "Y2 已完成。";
+          apopDispatchNote.textContent = `Y2 已完成：${run.task.id}`;
+        }
+        await refreshOpenClawGraph();
+      } catch (err) {
+        button.disabled = false;
+        button.textContent = "送 Y2 Appraisal";
+        apopDispatchNote.textContent = "Y2 派工失敗，確認 OpenClaw API 是否連線。";
+      }
+    }
+    async function selectCandidateForY1(card, button) {
+      const parent = button.closest(".candidate-card");
+      candidatePanel.querySelectorAll(".candidate-card").forEach(el => el.classList.remove("selected"));
+      if (parent) parent.classList.add("selected");
+      button.disabled = true;
+      button.textContent = "派到 Y1...";
+      try {
+        const payload = {
+          nodeId: "scanner",
+          title: `Y1 Evidence Check: ${card.topic}`,
+          task: `複查 Y0 候選卡：${card.topic}`,
+          executor: "OpenClaw",
+          modelRoute: "DeepSeek",
+          branch: `research/last30days-${String(card.topic || "candidate").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}`,
+          worktreeType: "不需要",
+          input: {
+            candidate: card,
+            date: tovikingDate?.value || localToday(),
+            sourceNode: "snapshot",
+            sourceStage: "Y0 Daily Brief",
+            evidenceRoom: "last30days Evidence Room + SQLite raw rows",
+            snapshot: "M:/Github-opendesign/toViking/snapshots/<date>.json",
+            skill: "last30days",
+            skills: ["last30days"],
+            last30daysMode: "last_30_days_evidence_check",
+            source: "candidate-card"
+          }
+        };
+        const data = await openclawFetch("/api/dispatch", { method: "POST", body: JSON.stringify(payload) });
+        button.textContent = "已選入 Y1";
+        apopDispatchNote.textContent = `已送 Y1：${data.task.id}`;
+        const run = await openclawFetch("/api/worker/run-task", { method: "POST", body: JSON.stringify({ id: data.task.id }) });
+        if (run.ran && run.result?.status === "completed") {
+          apopDispatchNote.textContent = `Y1 已完成：${run.task.id}`;
+          renderY1NextStep(card, button, run);
+        }
+        await refreshOpenClawGraph();
+      } catch (err) {
+        button.disabled = false;
+        button.textContent = "選入 Y1";
+        apopDispatchNote.textContent = "Y1 派工失敗，確認 OpenClaw API 是否連線。";
+      }
+    }
+    function renderCandidateCards(result) {
+      if (!candidatePanel) return;
+      if (apopId !== "snapshot") {
+        candidatePanel.classList.remove("open");
+        candidatePanel.innerHTML = "";
+        return;
+      }
+      const brief = result?.brief;
+      const cards = brief?.candidateCards || [];
+      const selectedDate = result?.selectedDate || result?.task?.input?.date || tovikingDate?.value || localToday();
+      candidatePanel.classList.add("open");
+      if (!cards.length) {
+        const label = result?.missingData ? "缺少當日資料" : (result ? "尚未產生" : "尚未刷新");
+        const message = result?.missingData
+          ? `找不到 ${selectedDate} 的 toViking SQLite daily brief 或 snapshot。請先在 toViking 產生當日資料，Y0 才會長出候選卡。`
+          : (result
+            ? `${selectedDate} 的 Y0 已有結果，但沒有候選卡；通常代表資料太薄或 summary 沒有可選標的。`
+            : `尚未有 ${selectedDate} 的 Y0 結果。按「刷新資料」後，Y0 會讀 SQLite advice 和 snapshot 生成候選卡。`);
+        candidatePanel.innerHTML = `<div class="candidate-head"><strong>Candidate Cards</strong><span>${label}</span></div><div class="candidate-meta">${escHtml(message)}</div>`;
+        return;
+      }
+      candidatePanel.innerHTML = `
+        <div class="candidate-head"><strong>Candidate Cards</strong><span>${brief.day || selectedDate || "today"}</span></div>
+        <div class="candidate-list">
+          ${cards.map((card, index) => `<article class="candidate-card">
+            <h4>${escHtml(card.topic)}<span>${escHtml(card.score ?? "n/a")}</span></h4>
+            <div class="candidate-meta">${escHtml(card.lane || "-")} · ${escHtml(card.readiness || "unknown")} · ${escHtml(card.packageType || "未分類")}<br>Evidence: ${escHtml(card.evidence || "-")} · Signals: ${escHtml(card.signalCount ?? "-")}</div>
+            <div class="candidate-action">${escHtml(card.defaultAction || "交給 Y1 複查")}</div>
+            <button class="candidate-select" type="button" data-i="${index}">選入 Y1</button>
+          </article>`).join("")}
+        </div>`;
+      candidatePanel.querySelectorAll(".candidate-select").forEach(button => {
+        button.addEventListener("click", () => selectCandidateForY1(cards[Number(button.dataset.i)], button));
+      });
+    }
+    async function loadCandidateCardsForPopup() {
+      if (apopId !== "snapshot") return renderCandidateCards(null);
+      if (!candidatePanel) return;
+      candidatePanel.classList.add("open");
+      candidatePanel.innerHTML = `<div class="candidate-head"><strong>Candidate Cards</strong><span>載入中</span></div>`;
+      try {
+        const date = tovikingDate?.value || localToday();
+        const data = await openclawFetch(`/api/results/latest?nodeId=snapshot&date=${encodeURIComponent(date)}`);
+        if (data.result) data.result._resultFile = data.resultFile;
+        renderCandidateCards(data.result);
+      } catch (err) {
+        candidatePanel.innerHTML = `<div class="candidate-head"><strong>Candidate Cards</strong><span>未連線</span></div><div class="candidate-meta">OpenClaw API 未連線，暫時無法讀取候選卡。</div>`;
+      }
+    }
+    function renderBinding(id) {
+      const b = EXECUTION_BINDINGS[id] || {};
+      const node = NODES.find(x => x.id === id);
+      const rows = [
+        ["Lane", (node && node.lanes || []).join(" · ") || "全部"],
+        ["Executor", b.executor || "OpenClaw"],
+        ["Skill", b.skill || "不需要"],
+        ["Branch", b.branch || "research/opportunity-radar"],
+        ["Input", b.input || "任務輸入由 Graph 指派"],
+        ["Evidence Room", b.evidenceRoom || "Dispatch Room"],
+        ["Authority", b.authority || "L0/L1 Auto"],
+        ["Output", b.output || "Graph result"],
+      ];
+      if (b.route) rows.splice(1, 0, ["Lane Route", b.route]);
+      if (b.worktree && b.worktree !== "不需要") rows.push(["Worktree", b.worktree]);
+      apopBinding.innerHTML = `<dl class="binding-grid">${rows.map(([k, v]) => `<div class="binding-row"><dt>${k}</dt><dd class="${v === "不需要" ? "none" : ""}">${v}</dd></div>`).join("")}</dl>`;
+    }    function openApop(id) {
+      const n = NODES.find(x => x.id === id);
+      if (!n) return;
+      apopId = id;
+      apop.classList.toggle("y0", id === "snapshot");
+      apopTitle.innerHTML = `${n.gate ? "⛨ " : ""}${n.t}<span class="apop-agent">${n.a}</span><span class="am" style="background:${LLM_COLOR[n.model]}">${LLM_SHORT[n.model]}</span>`;
+      apopDesc.textContent = n.d;
+      renderBinding(id);
+      loadCandidateCardsForPopup();
+      pin = id; refresh();
+      renderApopTags();
+      const rect = nodeEls[id].getBoundingClientRect();
+      const popWidth = id === "snapshot" ? Math.min(680, window.innerWidth - 16) : 300;
+      let x = rect.left + rect.width / 2 - popWidth / 2, y = rect.top + 12;
+      x = Math.max(8, Math.min(x, window.innerWidth - popWidth - 8));
+      y = Math.max(8, Math.min(y, window.innerHeight - 240));
+      apop.style.left = x + "px"; apop.style.top = y + "px";
+      apop.classList.add("open");
+    }
+    function closeApop() { apop.classList.remove("open", "y0"); apopId = null; pin = null; refresh(); }
+    $("#apopClose").addEventListener("click", closeApop);
+    window.addEventListener("keydown", e => { if (e.key === "Escape") closeApop(); });
+    function addApopTag() {
+      const v = apopTagInput.value.trim();
+      if (!v || !apopId) return;
+      (agentTags[apopId] = agentTags[apopId] || []).push(v);
+      saveAgentTags(); renderApopTags(); apopTagInput.value = "";
+    }
+    async function dispatchApopNode() {
+      if (!apopId) return;
+      const n = NODES.find(x => x.id === apopId);
+      const b = EXECUTION_BINDINGS[apopId] || {};
+      if (!n) return;
+      apopDispatch.disabled = true;
+      apopDispatchNote.textContent = "送出中...";
+      try {
+        const data = await openclawFetch("/api/dispatch", {
+          method: "POST",
+          body: JSON.stringify({
+            nodeId: apopId,
+            title: `${n.t} · ${n.a}`,
+            task: n.d,
+            executor: b.executor || "OpenClaw",
+            modelRoute: b.model || n.model,
+            branch: b.branch || "research/opportunity-radar",
+            worktreeType: b.worktree || "不需要",
+            input: {
+              description: n.d,
+              snapshot: "M:/Github-opendesign/toViking/snapshots/<date>.json",
+              source: "12tree.html",
+              inputLabel: b.input || "",
+              evidenceRoom: b.evidenceRoom || "Dispatch Room"
+            }
+          })
+        });
+        apopDispatchNote.textContent = `已派工：${data.task.id}`;
+        setOpenClawStatus("on", "OpenClaw: 已接收");
+        if (["snapshot", "scanner", "appraiser"].includes(apopId)) {
+          const run = await openclawFetch("/api/worker/run-task", { method: "POST", body: JSON.stringify({ id: data.task.id }) });
+          if (run.ran && run.result?.status === "completed") {
+            apopDispatchNote.textContent = `已完成：${run.task.id}`;
+            setOpenClawStatus("on", `完成：${run.task.nodeId}`);
+            if (apopId === "snapshot") await loadCandidateCardsForPopup();
+          } else if (run.ran && run.result?.status === "waiting_executor") {
+            apopDispatchNote.textContent = `已派工，等待：${run.task.executor}`;
+            setOpenClawStatus("pending", `等待：${run.task.executor}`);
+          }
+          await refreshOpenClawGraph();
+        }
+      } catch (err) {
+        apopDispatchNote.textContent = "OpenClaw 未連線；先啟動 node .\\openclaw-server.js";
+        setOpenClawStatus("off", "OpenClaw: 未連線");
+      } finally {
+        apopDispatch.disabled = false;
+      }
+    }
+    $("#apopTagAdd").addEventListener("click", addApopTag);
+    apopTagInput.addEventListener("keydown", e => { if (e.key === "Enter") addApopTag(); });
+    if (apopDispatch) apopDispatch.addEventListener("click", dispatchApopNode);
+    (() => {
+      let drag = false, sx, sy, ox, oy;
+      const head = $("#apopHead");
+      head.addEventListener("mousedown", e => {
+        drag = true; sx = e.clientX; sy = e.clientY;
+        ox = apop.offsetLeft; oy = apop.offsetTop;
+        e.preventDefault();
+      });
+      window.addEventListener("mousemove", e => {
+        if (!drag) return;
+        const limitX = window.innerWidth - apop.offsetWidth - 8;
+        apop.style.left = Math.max(8, Math.min(ox + e.clientX - sx, limitX)) + "px";
+        apop.style.top = Math.max(8, Math.min(oy + e.clientY - sy, window.innerHeight - 80)) + "px";
+      });
+      window.addEventListener("mouseup", () => drag = false);
+    })();
+
+    // ---- 標籤彙總列（點擊篩選）----
+    const tagstripTags = $("#tagstripTags");
+    let filterTag = null;
+    function renderTagStrip() {
+      const counts = {};
+      Object.entries(agentTags).forEach(([id, tags]) => tags.forEach(t => { counts[t] = (counts[t] || 0) + 1; }));
+      const entries = Object.entries(counts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+      const strip = $("#tagstrip");
+      if (!entries.length) { strip.style.display = "none"; return; }
+      strip.style.display = "flex";
+      tagstripTags.innerHTML = entries.map(([t, n]) => `<button class="tag-pill${filterTag === t ? " on" : ""}" data-t="${t}">${t}<span class="cnt">${n}</span></button>`).join("");
+      tagstripTags.querySelectorAll(".tag-pill").forEach(b =>
+        b.addEventListener("click", () => {
+          filterTag = filterTag === b.dataset.t ? null : b.dataset.t;
+          renderTagStrip();
+          applyTagFilter();
+        }));
+    }
+    function applyTagFilter() {
+      Object.entries(nodeEls).forEach(([id, el]) => {
+        const has = filterTag ? (agentTags[id] || []).includes(filterTag) : true;
+        el.classList.toggle("tagdim", !!filterTag && !has);
+      });
+      Object.entries(rowEls).forEach(([id, row]) => {
+        const has = filterTag ? (agentTags[id] || []).includes(filterTag) : true;
+        row.classList.toggle("tagdim", !!filterTag && !has);
+      });
+    }
+
+    // ---- Skills drawer（右側滑出；來源優先：同資料夾 skills.js > localStorage）----
+    const drawer = $("#drawer"), drawerMask = $("#drawerMask"), skillList = $("#skillList"), skillForm = $("#skillForm"), skillFoot = $("#skillFoot");
+    let skills = [];
+    let agentTags = {};
+    let useLocalFile = false;
+    (function loadSkills() {
+      // skills 清單：同資料夾 skills.js 優先（file:// 也適用）；agentTags 是動態資料，一律讀 localStorage
+      if (window.__LOCAL_SKILLS__ && typeof window.__LOCAL_SKILLS__ === "object") {
+        skills = Array.isArray(window.__LOCAL_SKILLS__.skills) ? window.__LOCAL_SKILLS__.skills : [];
+        useLocalFile = true;
+      }
+      try { skills = JSON.parse(localStorage.getItem("dg-skills")) || (skills.length ? skills : []); } catch (e) {}
+      try { agentTags = JSON.parse(localStorage.getItem("dg-agent-tags")) || {}; } catch (e) { agentTags = {}; }
+    })();
+    renderTagStrip();
+    function saveSkills() {
+      try { localStorage.setItem("dg-skills", JSON.stringify(skills)); } catch (e) {}
+      try { localStorage.setItem("dg-agent-tags", JSON.stringify(agentTags)); } catch (e) {}
+      renderTagStrip();
+      if (useLocalFile) {
+        window.__LOCAL_SKILLS__ = { skills, agentTags };
+        skillFoot.textContent = "已存到瀏覽器記憶。要讓資料夾的 skills.js 同步，請按下方匯出";
+      } else {
+        skillFoot.textContent = "已存到瀏覽器記憶（清瀏覽器會消失）。按下方匯出可存成檔案";
+      }
+    }
+    $("#exportBtn").addEventListener("click", () => {
+      const data = "window.__LOCAL_SKILLS__ = " + JSON.stringify({ skills, agentTags }, null, 2) + ";\n";
+      const blob = new Blob([data], { type: "application/javascript" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "skills.js";
+      a.click();
+      URL.revokeObjectURL(a.href);
+      skillFoot.textContent = "已匯出 skills.js。把它存到 12tree.html 同一個資料夾，下次開檔自動讀取";
+    });
+    function renderSkills() {
+      if (!skills.length) {
+        skillList.innerHTML = `<div class="skill-empty">還沒有 Skill<br>輸入名稱與網址，新增第一個</div>`;
+        return;
+      }
+      skillList.innerHTML = skills.map((s, i) =>
+        `<div class="skill-item"><div class="si"><div class="sn">${s.name}</div><a class="su" href="${s.url}" target="_blank" rel="noopener">${s.url}</a></div><button class="rm" data-i="${i}" title="移除">✕</button></div>`
+      ).join("");
+      skillList.querySelectorAll(".rm").forEach(b =>
+        b.addEventListener("click", () => { skills.splice(+b.dataset.i, 1); saveSkills(); renderSkills(); }));
+    }
+    function openDrawer() { drawer.classList.add("open"); drawerMask.classList.add("open"); renderSkills(); }
+    function closeDrawer() { drawer.classList.remove("open"); drawerMask.classList.remove("open"); }
+    $("#skillBtn").addEventListener("click", openDrawer);
+    $("#drawerClose").addEventListener("click", closeDrawer);
+    drawerMask.addEventListener("click", closeDrawer);
+    window.addEventListener("keydown", e => { if (e.key === "Escape") closeDrawer(); });
+    skillForm.addEventListener("submit", e => {
+      e.preventDefault();
+      const name = $("#skName").value.trim();
+      const url = $("#skUrl").value.trim();
+      if (!name || !url) return;
+      skills.push({ name, url });
+      saveSkills(); renderSkills();
+      $("#skName").value = ""; $("#skUrl").value = "";
+      $("#skName").focus();
+    });
+
+    // ---- 進場動畫：邊一律平滑描繪（reduced-motion 只移除位移，不跳）----
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (window.gsap) {
+      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+      tl.fromTo(".gnode",
+          { opacity: 0, y: reduceMotion ? 0 : 14, scale: reduceMotion ? 1 : .97 },
+          { opacity: 1, y: 0, scale: 1, duration: reduceMotion ? .25 : .5, stagger: reduceMotion ? 0 : { each: .05, from: "start" }, clearProps: "opacity,transform" })
+        .fromTo(".wires .edge:not(.back):not(.wrap)",
+          { strokeDashoffset: 1 },
+          { strokeDashoffset: 0, duration: reduceMotion ? .45 : .75, ease: "power2.inOut", stagger: reduceMotion ? 0 : .045, clearProps: "stroke-dashoffset" }, "-=.15")
+        .fromTo(".gnode[data-id=director]",
+          { scale: 1 },
+          { scale: 1.035, duration: .45, ease: "power1.inOut", yoyo: true, repeat: 1, clearProps: "transform" }, reduceMotion ? "-=.05" : "+=.35");
+    } else {
+      document.body.classList.add("css-anim");
+    }
+
+    async function runNextOpenClawTask() {
+      const btn = $("#openclawRun");
+      if (btn) btn.disabled = true;
+      try {
+        const data = await openclawFetch("/api/worker/run-next", { method: "POST" });
+        if (!data.ran) setOpenClawStatus("on", "OpenClaw: 無待辦");
+        else if (data.result?.status === "completed") setOpenClawStatus("on", `完成：${data.task.nodeId}`);
+        else if (data.result?.status === "waiting_executor") setOpenClawStatus("pending", `等待：${data.task.executor}`);
+        else setOpenClawStatus("off", "OpenClaw: 執行失敗");
+        await refreshOpenClawGraph();
+      } catch (err) {
+        setOpenClawStatus("off", "OpenClaw: 未連線");
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+    const openclawRun = $("#openclawRun");
+    if (openclawRun) openclawRun.addEventListener("click", runNextOpenClawTask);
+    refreshOpenClawStatus();
+    setInterval(refreshOpenClawStatus, 10000);
+
+    refresh();
+
+    // ---- font size control for fishbone ----
+    (function(){
+      const svg = document.getElementById("fishboneSvg");
+      if(!svg) return;
+      let scale = 100;
+      const lbl = document.getElementById("fontLbl");
+      const origSizes = [];
+      svg.querySelectorAll("text").forEach((t,i) => {
+        origSizes[i] = parseFloat(t.getAttribute("font-size")) || 12;
+      });
+      function applyScale(){
+        const f = scale / 100;
+        svg.querySelectorAll("text").forEach((t,i) => {
+          t.setAttribute("font-size", (origSizes[i] * f).toFixed(1));
+        });
+        lbl.textContent = scale + "%";
+      }
+      document.getElementById("fontUp").addEventListener("click", () => { scale = Math.min(250, scale + 20); applyScale(); });
+      document.getElementById("fontDn").addEventListener("click", () => { scale = Math.max(60, scale - 20); applyScale(); });
+    })();
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
