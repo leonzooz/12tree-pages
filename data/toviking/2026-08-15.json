@@ -1,0 +1,69 @@
+{
+  "selectedDate": "2026-08-15",
+  "sourceLabel": "snapshot 摘要",
+  "brief": {
+    "day": "2026-08-15",
+    "candidateCards": [
+      {
+        "topic": "mcp",
+        "score": "0.870",
+        "lane": "L2",
+        "readiness": "已驗證",
+        "packageType": "prompt包",
+        "evidence": "新詞 · GitHub · OPC",
+        "signalCount": 7,
+        "defaultAction": "差 同類 TG／AllScale live 付款或成交證據：無 live 訊號"
+      },
+      {
+        "topic": "video",
+        "score": "0.852",
+        "lane": "L2",
+        "readiness": "已驗證",
+        "packageType": "mini-tool·腳本",
+        "evidence": "GitHub · 地區榜 · OPC · 營收榜",
+        "signalCount": 7,
+        "defaultAction": "差 同類 TG／AllScale live 付款或成交證據：無 live 訊號"
+      },
+      {
+        "topic": "crm",
+        "score": "0.728",
+        "lane": "L1",
+        "readiness": "已驗證",
+        "packageType": "工作流·SOP",
+        "evidence": "地區榜 · OPC",
+        "signalCount": 3,
+        "defaultAction": "差 GitHub 可重現程式 / Launch 可實作路徑：無 · 需求與可做證據來自至少兩個獨立來源家族：2 家族（需求 2 / 可做 0）"
+      },
+      {
+        "topic": "template",
+        "score": "0.712",
+        "lane": "L1",
+        "readiness": "已驗證",
+        "packageType": "工作流·SOP",
+        "evidence": "地區榜 · OPC",
+        "signalCount": 2,
+        "defaultAction": "差 GitHub 可重現程式 / Launch 可實作路徑：無 · 需求與可做證據來自至少兩個獨立來源家族：2 家族（需求 2 / 可做 0）"
+      },
+      {
+        "topic": "agent tools",
+        "score": "0.692",
+        "lane": "observation",
+        "readiness": "待驗證",
+        "packageType": "prompt包",
+        "evidence": "GitHub",
+        "signalCount": 10,
+        "defaultAction": "差 AllScale 真詞 / Toolify 地區需求 / 外部付費證據，任一：無"
+      },
+      {
+        "topic": "chinese poetry api",
+        "score": "0.642",
+        "lane": "observation",
+        "readiness": "待驗證",
+        "packageType": "mini-tool·腳本",
+        "evidence": "GitHub",
+        "signalCount": 1,
+        "defaultAction": "差 AllScale 真詞 / Toolify 地區需求 / 外部付費證據，任一：無"
+      }
+    ]
+  }
+}

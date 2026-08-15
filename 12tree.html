@@ -1779,7 +1779,8 @@
         await refreshOpenClawGraph();
         if (apopId === "snapshot") await loadCandidateCardsForPopup();
       } catch (err) {
-        setOpenClawStatus("off", `toViking 讀取失敗：${date}`);
+        setOpenClawStatus("pending", `Y0 使用公開摘要：${date}`);
+        if (apopId === "snapshot") await loadCandidateCardsForPopup();
       } finally {
         tovikingRefresh.disabled = false;
         tovikingRefresh.textContent = "刷新資料";
@@ -2253,7 +2254,7 @@
         return;
       }
       candidatePanel.innerHTML = `
-        <div class="candidate-head"><strong>Candidate Cards</strong><span>${brief.day || selectedDate || "today"}</span></div>
+        <div class="candidate-head"><strong>Candidate Cards</strong><span>${brief.day || selectedDate || "today"}${result?.sourceLabel ? ` · ${escHtml(result.sourceLabel)}` : ""}</span></div>
         <div class="candidate-list">
           ${cards.map((card, index) => `<article class="candidate-card">
             <h4>${escHtml(card.topic)}<span>${escHtml(card.score ?? "n/a")}</span></h4>
@@ -2266,19 +2267,35 @@
         button.addEventListener("click", () => selectCandidateForY1(cards[Number(button.dataset.i)], button));
       });
     }
+    async function loadPublishedCandidateCards(date) {
+      try {
+        const response = await fetch(`./data/toviking/${encodeURIComponent(date)}.json`, { cache: "no-store" });
+        if (!response.ok) return null;
+        const data = await response.json();
+        return data?.brief?.candidateCards?.length ? data : null;
+      } catch (err) {
+        return null;
+      }
+    }
     async function loadCandidateCardsForPopup() {
       if (apopId !== "snapshot") return renderCandidateCards(null);
       if (!candidatePanel) return;
       candidatePanel.classList.add("open");
       candidatePanel.innerHTML = `<div class="candidate-head"><strong>Candidate Cards</strong><span>載入中</span></div>`;
+      const date = tovikingDate?.value || localToday();
       try {
-        const date = tovikingDate?.value || localToday();
         const data = await openclawFetch(`/api/results/latest?nodeId=snapshot&date=${encodeURIComponent(date)}`);
-        if (data.result) data.result._resultFile = data.resultFile;
-        renderCandidateCards(data.result);
+        if (data.result?.brief?.candidateCards?.length) {
+          data.result._resultFile = data.resultFile;
+          renderCandidateCards(data.result);
+          return;
+        }
       } catch (err) {
-        candidatePanel.innerHTML = `<div class="candidate-head"><strong>Candidate Cards</strong><span>未連線</span></div><div class="candidate-meta">OpenClaw API 未連線，暫時無法讀取候選卡。</div>`;
+        // Public summaries remain readable when OpenClaw is offline.
       }
+      const published = await loadPublishedCandidateCards(date);
+      if (published) return renderCandidateCards(published);
+      candidatePanel.innerHTML = `<div class="candidate-head"><strong>Candidate Cards</strong><span>缺少當日資料</span></div><div class="candidate-meta">找不到 ${escHtml(date)} 的 OpenClaw Y0 結果或公開候選摘要。</div>`;
     }
     function renderBinding(id) {
       const b = EXECUTION_BINDINGS[id] || {};
