@@ -784,10 +784,10 @@
     button:disabled, .info-btn:disabled, .api-dispatch:disabled, .candidate-select:disabled {
       opacity: .5; cursor: not-allowed; box-shadow: var(--shadow-sunken); transform: none;
     }
-    .info-btn.primary, #tovikingRefresh, .api-dispatch, .skill-form .add-btn, .export-btn {
+    .info-btn.primary, #tovikingRefresh, #openclawStart, .api-dispatch, .skill-form .add-btn, .export-btn {
       background: var(--accent-primary); color: var(--surface); box-shadow: 4px 4px 10px rgba(27,58,92,.30), -4px -4px 10px rgba(255,255,255,.88);
     }
-    .info-btn.primary:hover, #tovikingRefresh:hover, .api-dispatch:hover, .skill-form .add-btn:hover, .export-btn:hover {
+    .info-btn.primary:hover, #tovikingRefresh:hover, #openclawStart:hover, .api-dispatch:hover, .skill-form .add-btn:hover, .export-btn:hover {
       color: var(--surface);
     }
     .date-picker, .cfg-input, .skill-form input, input[type="text"], input[type="url"], input[type="date"] {
@@ -860,7 +860,7 @@
     /* ---- Top navigation relocation ---- */
     .top-tabs { order: 20; margin-left: var(--space-1); }
     #llmBtn { order: 21; }
-    #skillBtn, #openclawStatus, #openclawRun { order: 22; }
+    #skillBtn, #openclawStart, #openclawStatus, #openclawRun { order: 22; }
     .agent-cache { display: none !important; }
     .main { display: block; }
     .canvas-stack { width: 100%; }
@@ -968,6 +968,8 @@
       .data-tools { gap: var(--space-2); }
       .data-tools .date-picker { flex: 1 1 auto; min-width: 0; }
       #tovikingRefresh { flex: 0 0 auto; }
+      #openclawStart { width: 44px; padding-inline: 0; justify-content: center; }
+      #openclawStart .openclaw-start-label { display: none; }
       /* 框架邊界預設收合，點標題展開。滑桿不是每天要動的東西。 */
       .settings { flex-wrap: wrap; }
       .settings .handle { cursor: pointer; width: 100%; }
@@ -1095,7 +1097,8 @@
         <input class="date-picker" id="tovikingDate" type="date" value="2026-08-07" title="選擇資料日期">
         <button class="info-btn more-btn" id="moreBtn" type="button" aria-expanded="false" aria-controls="dataTools" title="更多工具">⋯</button>
         <button class="info-btn tool-extra" id="infoBtn">ⓘ 圖例與說明</button>
-        <button class="info-btn api-status pending tool-extra" id="openclawStatus" title="OpenClaw Local API">OpenClaw: 檢查中</button>
+        <button class="info-btn primary" id="openclawStart" type="button" title="開啟本機 OpenClaw 控制台" aria-label="開啟 OpenClaw"><span aria-hidden="true">↗</span><span class="openclaw-start-label">開啟 OpenClaw</span></button>
+        <button class="info-btn api-status pending tool-extra" id="openclawStatus" type="button" title="OpenClaw Local API">OpenClaw: 檢查中</button>
         <button class="info-btn tool-extra" id="openclawRun" title="執行 queue 裡的下一筆任務">執行下一筆</button>
         <div class="gear-menu" id="gearMenu">
           <button class="info-btn gear-btn" id="gearBtn" type="button" aria-haspopup="true" aria-expanded="false" title="設定" aria-label="設定">⚙</button>
@@ -1679,7 +1682,9 @@
     const wires = $("#wires"), nodesEl = $("#nodes"), side = $("#side");
     const chart = $("#chart");
     const OPENCLAW_API = localStorage.getItem("openclaw-api") || "http://127.0.0.1:8787";
+    const OPENCLAW_DASHBOARD = localStorage.getItem("openclaw-dashboard") || "http://127.0.0.1:18789/";
     const openclawStatus = $("#openclawStatus");
+    const openclawStart = $("#openclawStart");
     function setOpenClawStatus(state, label) {
       if (!openclawStatus) return;
       openclawStatus.classList.toggle("on", state === "on");
@@ -1717,11 +1722,18 @@
     async function refreshOpenClawStatus() {
       try {
         const data = await openclawFetch("/api/health");
-        setOpenClawStatus("on", `OpenClaw: ${data.port}`);
+        const gatewayReady = data.gateway?.ok !== false;
+        setOpenClawStatus(gatewayReady ? "on" : "pending", gatewayReady ? "OpenClaw: 已啟動" : "OpenClaw: 橋接已啟動");
         await refreshOpenClawGraph();
+        return data;
       } catch (err) {
         setOpenClawStatus("off", "OpenClaw: 未連線");
+        return null;
       }
+    }
+
+    function launchOpenClaw() {
+      window.open(OPENCLAW_DASHBOARD, "_blank", "noopener");
     }
 
 
@@ -2506,6 +2518,8 @@
         if (btn) btn.disabled = false;
       }
     }
+    if (openclawStart) openclawStart.addEventListener("click", launchOpenClaw);
+    if (openclawStatus) openclawStatus.addEventListener("click", launchOpenClaw);
     const openclawRun = $("#openclawRun");
     if (openclawRun) openclawRun.addEventListener("click", runNextOpenClawTask);
     refreshOpenClawStatus();
