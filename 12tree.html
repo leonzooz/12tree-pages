@@ -332,9 +332,20 @@
     .candidate-list { display: grid; gap: 7px; max-height: 260px; overflow: auto; padding-right: 2px; }
     .candidate-card { border: 1px solid color-mix(in srgb, var(--warm) 48%, var(--line)); border-radius: 10px; background: var(--card); padding: 8px 9px; }
     .candidate-card h4 { margin: 0 0 5px; color: var(--ink); font-size: 12.5px; font-weight: 900; display: flex; justify-content: space-between; gap: 8px; }
-    .candidate-card h4 span { color: var(--warm-ink); font-variant-numeric: tabular-nums; font-size: 11px; }
+    .candidate-card .candidate-badges { display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px; flex: 0 0 auto; }
+    .candidate-card .candidate-score { color: var(--warm-ink); font-variant-numeric: tabular-nums; font-size: 11px; }
+    .candidate-status { display: none; color: var(--surface); font-size: 8.5px; line-height: 1; font-weight: 900; border-radius: 5px; padding: 3px 5px; white-space: nowrap; }
+    .candidate-status.show { display: inline-block; }
     .candidate-meta { color: var(--list); font-size: 10.8px; line-height: 1.45; }
     .candidate-action { margin-top: 5px; color: var(--cool-ink); font-size: 10.8px; font-weight: 800; }
+    .candidate-query-label { display: grid; gap: 4px; margin-top: 7px; color: var(--soft); font-size: 9px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+    .candidate-query {
+      width: 100%; box-sizing: border-box; border: 0; border-radius: 8px;
+      background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sunken);
+      padding: 7px 9px; font: 10.5px/1.35 ui-monospace, SFMono-Regular, Consolas, monospace;
+      text-transform: none; letter-spacing: 0; outline: none;
+    }
+    .candidate-query:focus { box-shadow: var(--shadow-pressed); }
     .candidate-select {
       margin-top: 7px; width: 100%; border: 1px solid var(--warm); background: var(--warm); color: var(--surface);
       font: inherit; font-size: 11px; font-weight: 900; padding: 6px 8px; border-radius: 8px; cursor: pointer;
@@ -427,6 +438,16 @@
     .gnode:hover, .gnode.pinned { transform: translateY(-2px); box-shadow: var(--shadow-raised); }
     .gnode .t { font-size: 12.5px; font-weight: 800; letter-spacing: .02em; line-height: 1.2; display: flex; align-items: center; gap: 6px; justify-content: space-between; }
     .gnode .t .lb { display: flex; align-items: center; gap: 5px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .gnode .nbadges { display: inline-flex; align-items: center; justify-content: flex-end; gap: 3px; flex: 0 0 auto; }
+    .node-run-status {
+      display: none; font-size: 7.5px; font-weight: 900; letter-spacing: 0;
+      border-radius: 4px; padding: 2px 4px; color: var(--surface); white-space: nowrap;
+    }
+    .node-run-status.show { display: inline-block; }
+    .node-run-status.running, .candidate-status.running { background: var(--warm); }
+    .node-run-status.completed, .candidate-status.completed { background: #26865f; }
+    .node-run-status.failed, .candidate-status.failed { background: var(--red); }
+    .node-run-status.waiting, .candidate-status.waiting { background: var(--ls); }
     /* agent 代號獨立一行：中文角色名負責一眼辨識，英文代號負責對回名冊，擠同一行兩邊都讀不清 */
     .gnode .a {
       font-size: 8.5px; font-weight: 700; letter-spacing: .07em; color: var(--soft);
@@ -1714,9 +1735,49 @@
       if (growth) growth.textContent = metrics.taskGrowthRatio;
       if (growthMeter) growthMeter.style.width = Math.max(0, Math.min(100, ((metrics.taskGrowthRatio || 0) / 2) * 100)) + "%";
     }
+    let latestOpenClawQueue = [];
+    function runStatusMeta(status) {
+      if (status === "completed") return { cls: "completed", label: "✓ 完成" };
+      if (status === "failed") return { cls: "failed", label: "失敗" };
+      if (status === "waiting_executor") return { cls: "waiting", label: "等待" };
+      if (status === "queued" || status === "running") return { cls: "running", label: "執行中" };
+      return null;
+    }
+    function paintNodeStatuses(queue) {
+      const latest = new Map();
+      (queue || []).forEach(task => latest.set(task.nodeId, task));
+      document.querySelectorAll(".gnode[data-id]").forEach(node => {
+        const task = latest.get(node.dataset.id);
+        const badge = node.querySelector(".node-run-status");
+        if (!badge) return;
+        const meta = runStatusMeta(task?.status);
+        badge.className = `node-run-status${meta ? ` show ${meta.cls}` : ""}`;
+        badge.textContent = meta?.label || "";
+        badge.title = task ? `${task.title || task.nodeId}\n${task.id}` : "";
+      });
+    }
+    function latestY1TaskForCard(card, date) {
+      const topic = String(card?.topic || "").toLowerCase();
+      return latestOpenClawQueue.filter(task =>
+        task.nodeId === "scanner"
+        && String(task.input?.candidate?.topic || "").toLowerCase() === topic
+        && (!date || !task.input?.date || task.input.date === date)
+      ).at(-1) || null;
+    }
+    function paintCandidateStatus(cardElement, task) {
+      if (!cardElement) return;
+      const badge = cardElement.querySelector(".candidate-status");
+      if (!badge) return;
+      const meta = runStatusMeta(task?.status);
+      badge.className = `candidate-status${meta ? ` show ${meta.cls}` : ""}`;
+      badge.textContent = meta ? `Y1 ${meta.label}` : "";
+      badge.title = task ? `${task.title || "Y1"}\n${task.id}` : "";
+    }
     async function refreshOpenClawGraph() {
       const graph = await openclawFetch("/api/graph");
+      latestOpenClawQueue = Array.isArray(graph.queue) ? graph.queue : [];
       paintMonitor(graph.metrics);
+      paintNodeStatuses(latestOpenClawQueue);
       return graph;
     }
     async function refreshOpenClawStatus() {
@@ -1836,7 +1897,7 @@
         const hit = lanes.find(entry => entry.startsWith(key));
         return `<span class="${hit ? "on" : ""}">${hit || key}</span>`;
       }).join("");
-      div.innerHTML = `<div class="t"><span class="lb">${n.gate ? "⛨ " : ""}${n.t}</span><span class="m" style="background:${LLM_COLOR[n.model]}">${LLM_SHORT[n.model]}</span></div><div class="a">${n.a}</div><div class="d">${n.d}</div><div class="lanes">${laneHtml}</div>`;
+      div.innerHTML = `<div class="t"><span class="lb">${n.gate ? "⛨ " : ""}${n.t}</span><span class="nbadges"><span class="m" style="background:${LLM_COLOR[n.model]}">${LLM_SHORT[n.model]}</span><span class="node-run-status"></span></span></div><div class="a">${n.a}</div><div class="d">${n.d}</div><div class="lanes">${laneHtml}</div>`;
       nodesEl.appendChild(div);
       nodeEls[n.id] = div;
     });
@@ -2197,6 +2258,9 @@
     }
     async function selectCandidateForY1(card, button) {
       const parent = button.closest(".candidate-card");
+      const queryInput = parent?.querySelector(".candidate-query");
+      const searchQuery = String(queryInput?.value || card.searchQuery || card.topic || "").trim();
+      card = { ...card, searchQuery };
       candidatePanel.querySelectorAll(".candidate-card").forEach(el => el.classList.remove("selected"));
       if (parent) parent.classList.add("selected");
       button.disabled = true;
@@ -2205,13 +2269,14 @@
         const payload = {
           nodeId: "scanner",
           title: `Y1 Evidence Check: ${card.topic}`,
-          task: `複查 Y0 候選卡：${card.topic}`,
+          task: `複查 Y0 候選卡：${card.topic}；last30days 查詢：${searchQuery}`,
           executor: "OpenClaw",
           modelRoute: "DeepSeek",
           branch: `research/last30days-${String(card.topic || "candidate").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}`,
           worktreeType: "不需要",
           input: {
             candidate: card,
+            searchQuery,
             date: tovikingDate?.value || localToday(),
             sourceNode: "snapshot",
             sourceStage: "Y0 Daily Brief",
@@ -2226,16 +2291,25 @@
         };
         const data = await openclawFetch("/api/dispatch", { method: "POST", body: JSON.stringify(payload) });
         button.textContent = "已選入 Y1";
+        paintCandidateStatus(parent, { ...data.task, status: "queued" });
         apopDispatchNote.textContent = `已送 Y1：${data.task.id}`;
         const run = await openclawFetch("/api/worker/run-task", { method: "POST", body: JSON.stringify({ id: data.task.id }) });
         if (run.ran && run.result?.status === "completed") {
+          button.textContent = "重新跑 Y1";
+          button.disabled = false;
+          paintCandidateStatus(parent, { ...run.task, status: "completed" });
           apopDispatchNote.textContent = `Y1 已完成：${run.task.id}`;
           renderY1NextStep(card, button, run);
+        } else if (run.ran && run.result?.status === "failed") {
+          button.textContent = "重新跑 Y1";
+          button.disabled = false;
+          paintCandidateStatus(parent, { ...run.task, status: "failed" });
         }
         await refreshOpenClawGraph();
       } catch (err) {
         button.disabled = false;
         button.textContent = "選入 Y1";
+        paintCandidateStatus(parent, { status: "failed", title: `Y1 Evidence Check: ${card.topic}`, id: "dispatch-failed" });
         apopDispatchNote.textContent = "Y1 派工失敗，確認 OpenClaw API 是否連線。";
       }
     }
@@ -2263,12 +2337,21 @@
       candidatePanel.innerHTML = `
         <div class="candidate-head"><strong>Candidate Cards</strong><span>${brief.day || selectedDate || "today"}${result?.sourceLabel ? ` · ${escHtml(result.sourceLabel)}` : ""}</span></div>
         <div class="candidate-list">
-          ${cards.map((card, index) => `<article class="candidate-card">
-            <h4>${escHtml(card.topic)}<span>${escHtml(card.score ?? "n/a")}</span></h4>
-            <div class="candidate-meta">${escHtml(card.lane || "-")} · ${escHtml(card.readiness || "unknown")} · ${escHtml(card.packageType || "未分類")}<br>Evidence: ${escHtml(card.evidence || "-")} · Signals: ${escHtml(card.signalCount ?? "-")}</div>
-            <div class="candidate-action">${escHtml(card.defaultAction || "交給 Y1 複查")}</div>
-            <button class="candidate-select" type="button" data-i="${index}">選入 Y1</button>
-          </article>`).join("")}
+          ${cards.map((card, index) => {
+            const y1Task = latestY1TaskForCard(card, selectedDate);
+            const status = runStatusMeta(y1Task?.status);
+            const running = y1Task?.status === "queued" || y1Task?.status === "running";
+            const buttonLabel = y1Task?.status === "completed" ? "重新跑 Y1" : running ? "Y1 執行中" : "選入 Y1";
+            const signalMix = Number.isFinite(card.hotCount) || Number.isFinite(card.watchCount)
+              ? ` · HOT ${card.hotCount || 0} / WATCH ${card.watchCount || 0}` : "";
+            return `<article class="candidate-card${y1Task ? " selected" : ""}">
+              <h4><span>${escHtml(card.topic)}</span><span class="candidate-badges"><span class="candidate-score">${escHtml(card.score ?? "n/a")}</span><span class="candidate-status${status ? ` show ${status.cls}` : ""}" title="${escHtml(y1Task ? `${y1Task.title || "Y1"} · ${y1Task.id}` : "")}">${status ? `Y1 ${status.label}` : ""}</span></span></h4>
+              <div class="candidate-meta">${escHtml(card.lane || "-")} · ${escHtml(card.readiness || "unknown")} · ${escHtml(card.packageType || "未分類")}<br>Evidence: ${escHtml(card.evidence || card.dimensions?.join(",") || "-")} · Signals: ${escHtml(card.signalCount ?? "-")}${escHtml(signalMix)}</div>
+              <div class="candidate-action">${escHtml(card.defaultAction || "交給 Y1 複查")}</div>
+              <label class="candidate-query-label">Y1 搜尋題目<input class="candidate-query" type="text" value="${escHtml(card.searchQuery || card.topic)}" aria-label="${escHtml(card.topic)} 的 Y1 搜尋題目"></label>
+              <button class="candidate-select" type="button" data-i="${index}"${running ? " disabled" : ""}>${buttonLabel}</button>
+            </article>`;
+          }).join("")}
         </div>`;
       candidatePanel.querySelectorAll(".candidate-select").forEach(button => {
         button.addEventListener("click", () => selectCandidateForY1(cards[Number(button.dataset.i)], button));
@@ -2291,6 +2374,7 @@
       candidatePanel.innerHTML = `<div class="candidate-head"><strong>Candidate Cards</strong><span>載入中</span></div>`;
       const date = tovikingDate?.value || localToday();
       try {
+        try { await refreshOpenClawGraph(); } catch (error) { /* 公開摘要仍可單獨顯示 */ }
         const data = await openclawFetch(`/api/results/latest?nodeId=snapshot&date=${encodeURIComponent(date)}`);
         if (data.result?.brief?.candidateCards?.length) {
           data.result._resultFile = data.resultFile;
