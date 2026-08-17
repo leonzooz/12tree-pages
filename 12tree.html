@@ -1764,6 +1764,11 @@
         && (!date || !task.input?.date || task.input.date === date)
       ).at(-1) || null;
     }
+    function y1TaskMatchesCardQuery(task, card) {
+      const expected = String(card?.searchQuery || card?.topic || "").trim().toLowerCase();
+      const actual = String(task?.input?.searchQuery || task?.input?.candidate?.searchQuery || task?.input?.candidate?.topic || "").trim().toLowerCase();
+      return !!expected && expected === actual;
+    }
     function paintCandidateStatus(cardElement, task) {
       if (!cardElement) return;
       const badge = cardElement.querySelector(".candidate-status");
@@ -2339,9 +2344,10 @@
         <div class="candidate-list">
           ${cards.map((card, index) => {
             const y1Task = latestY1TaskForCard(card, selectedDate);
-            const status = runStatusMeta(y1Task?.status);
-            const running = y1Task?.status === "queued" || y1Task?.status === "running";
-            const buttonLabel = y1Task?.status === "completed" ? "重新跑 Y1" : running ? "Y1 執行中" : "選入 Y1";
+            const queryMatches = y1TaskMatchesCardQuery(y1Task, card);
+            const status = y1Task && !queryMatches ? { cls: "waiting", label: "舊查詢" } : runStatusMeta(y1Task?.status);
+            const running = queryMatches && (y1Task?.status === "queued" || y1Task?.status === "running");
+            const buttonLabel = y1Task && !queryMatches ? "用新題目重跑 Y1" : y1Task?.status === "completed" ? "重新跑 Y1" : running ? "Y1 執行中" : "選入 Y1";
             const signalMix = Number.isFinite(card.hotCount) || Number.isFinite(card.watchCount)
               ? ` · HOT ${card.hotCount || 0} / WATCH ${card.watchCount || 0}` : "";
             return `<article class="candidate-card${y1Task ? " selected" : ""}">
