@@ -338,6 +338,25 @@
     .candidate-status.show { display: inline-block; }
     .candidate-meta { color: var(--list); font-size: 10.8px; line-height: 1.45; }
     .candidate-action { margin-top: 5px; color: var(--cool-ink); font-size: 10.8px; font-weight: 800; }
+    .candidate-y0-analysis {
+      margin-top: 8px; padding: 8px; border-radius: 10px; background: var(--surface);
+      box-shadow: var(--shadow-sunken);
+    }
+    .candidate-y0-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+    .candidate-y0-head strong { color: var(--accent-primary); font-size: 9.5px; letter-spacing: 1px; text-transform: uppercase; }
+    .candidate-y0-head span { color: var(--text-tertiary); font-size: 9px; font-weight: 800; }
+    .candidate-y0-summary { margin: 5px 0 7px; color: var(--text-secondary); font-size: 10px; line-height: 1.45; }
+    .candidate-angle-list { display: grid; gap: 5px; }
+    .candidate-angle {
+      width: 100%; text-align: left; border: 0; border-radius: 8px; padding: 7px 8px;
+      background: var(--surface); color: var(--text-secondary); box-shadow: var(--shadow-soft);
+      font: inherit; cursor: pointer;
+    }
+    .candidate-angle:hover { transform: translateY(-1px); box-shadow: var(--shadow-raised-hover); }
+    .candidate-angle.active { color: var(--accent-primary); box-shadow: var(--shadow-pressed); }
+    .candidate-angle b { display: block; color: inherit; font-size: 10.5px; line-height: 1.35; }
+    .candidate-angle span { display: block; margin-top: 2px; color: var(--text-secondary); font-size: 9.5px; line-height: 1.4; }
+    .candidate-angle small { display: block; margin-top: 3px; color: var(--text-tertiary); font-size: 8.8px; line-height: 1.35; }
     .candidate-query-label { display: grid; gap: 4px; margin-top: 7px; color: var(--soft); font-size: 9px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
     .candidate-query {
       width: 100%; box-sizing: border-box; border: 0; border-radius: 8px;
@@ -1766,10 +1785,10 @@
       });
     }
     function latestY1TaskForCard(card, date) {
-      const topic = String(card?.topic || "").toLowerCase();
+      const topic = String(card?.sourceTopic || card?.topic || "").toLowerCase();
       return latestOpenClawQueue.filter(task =>
         task.nodeId === "scanner"
-        && String(task.input?.candidate?.topic || "").toLowerCase() === topic
+        && String(task.input?.candidate?.sourceTopic || task.input?.candidate?.parentTopic || task.input?.candidate?.topic || "").toLowerCase() === topic
         && (!date || !task.input?.date || task.input.date === date)
       ).at(-1) || null;
     }
@@ -2243,7 +2262,7 @@
       try {
         const data = await openclawFetch(`/api/results/task?taskId=${encodeURIComponent(task.id)}`);
         const stored = data.result || {};
-        renderY1NextStep(card, button, {
+        renderY1NextStep(task.input?.candidate || card, button, {
           task,
           result: { ...stored, status: "completed", resultFile: data.resultFile, summary: stored.summary || "" }
         });
@@ -2295,7 +2314,19 @@
       const parent = button.closest(".candidate-card");
       const queryInput = parent?.querySelector(".candidate-query");
       const searchQuery = String(queryInput?.value || card.searchQuery || card.topic || "").trim();
-      card = { ...card, searchQuery };
+      const angleIndex = Number(parent?.dataset.angleIndex || 0);
+      const angle = card.y0Analysis?.angles?.[angleIndex] || null;
+      const sourceTopic = card.sourceTopic || card.topic;
+      card = angle ? {
+        ...card,
+        topic: angle.title,
+        parentTopic: sourceTopic,
+        sourceTopic,
+        parentScore: card.score,
+        scoreBasis: "parent-topic",
+        y0Angle: angle,
+        searchQuery
+      } : { ...card, sourceTopic, searchQuery };
       candidatePanel.querySelectorAll(".candidate-card").forEach(el => el.classList.remove("selected"));
       if (parent) parent.classList.add("selected");
       button.disabled = true;
@@ -2304,7 +2335,7 @@
         const payload = {
           nodeId: "scanner",
           title: `Y1 Evidence Check: ${card.topic}`,
-          task: `複查 Y0 候選卡：${card.topic}；last30days 查詢：${searchQuery}`,
+          task: `複查 Y0 母題「${sourceTopic}」拆出的機會假設：${card.topic}；last30days 查詢：${searchQuery}`,
           executor: "OpenClaw",
           modelRoute: "DeepSeek",
           branch: `research/last30days-${String(card.topic || "candidate").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}`,
@@ -2380,10 +2411,18 @@
             const buttonLabel = y1Task && !queryMatches ? "用新題目重跑 Y1" : y1Task?.status === "completed" ? "重新跑 Y1" : running ? "Y1 執行中" : "選入 Y1";
             const signalMix = Number.isFinite(card.hotCount) || Number.isFinite(card.watchCount)
               ? ` · HOT ${card.hotCount || 0} / WATCH ${card.watchCount || 0}` : "";
-            return `<article class="candidate-card${y1Task ? " selected" : ""}">
-              <h4><span>${escHtml(card.topic)}</span><span class="candidate-badges"><span class="candidate-score">${escHtml(card.score ?? "n/a")}</span><span class="candidate-status${status ? ` show ${status.cls}` : ""}" title="${escHtml(y1Task ? `${y1Task.title || "Y1"} · ${y1Task.id}` : "")}">${status ? `Y1 ${status.label}` : ""}</span></span></h4>
+            const analysis = card.y0Analysis || null;
+            const angles = analysis?.angles || [];
+            const angleMarkup = angles.length ? `<div class="candidate-y0-analysis">
+              <div class="candidate-y0-head"><strong>Y0 分析 · 母題</strong><span>${escHtml(analysis.signalCount)} 訊號 → ${escHtml(angles.length)} 假設</span></div>
+              <p class="candidate-y0-summary">${escHtml(analysis.summary)}</p>
+              <div class="candidate-angle-list">${angles.map((angle, angleIndex) => `<button class="candidate-angle${angleIndex === 0 ? " active" : ""}" type="button" data-angle-i="${angleIndex}"><b>${escHtml(angle.title)}</b><span>${escHtml(angle.audience)}：${escHtml(angle.problem)}</span><small>${escHtml(angle.confidence)} · ${escHtml(angle.evidenceCount)} 筆 · ${escHtml(angle.dimensions?.join(" / ") || "來源待確認")}</small></button>`).join("")}</div>
+            </div>` : "";
+            return `<article class="candidate-card${y1Task ? " selected" : ""}" data-angle-index="0">
+              <h4><span>${escHtml(card.topic)} <small>母題</small></span><span class="candidate-badges"><span class="candidate-score">母題分 ${escHtml(card.score ?? "n/a")}</span><span class="candidate-status${status ? ` show ${status.cls}` : ""}" title="${escHtml(y1Task ? `${y1Task.title || "Y1"} · ${y1Task.id}` : "")}">${status ? `Y1 ${status.label}` : ""}</span></span></h4>
               <div class="candidate-meta">${escHtml(card.lane || "-")} · ${escHtml(card.readiness || "unknown")} · ${escHtml(card.packageType || "未分類")}<br>Evidence: ${escHtml(card.evidence || card.dimensions?.join(",") || "-")} · Signals: ${escHtml(card.signalCount ?? "-")}${escHtml(signalMix)}</div>
               <div class="candidate-action">${escHtml(card.defaultAction || "交給 Y1 複查")}</div>
+              ${angleMarkup}
               <label class="candidate-query-label">Y1 搜尋題目<input class="candidate-query" type="text" value="${escHtml(card.searchQuery || card.topic)}" aria-label="${escHtml(card.topic)} 的 Y1 搜尋題目"></label>
               <button class="candidate-select" type="button" data-i="${index}"${running ? " disabled" : ""}>${buttonLabel}</button>
               ${y1Task?.status === "completed" ? `<button class="candidate-view" type="button" data-i="${index}" data-task-id="${escHtml(y1Task.id)}">${queryMatches ? "閱覽本次資料" : "閱覽舊查詢資料"}</button>` : ""}
@@ -2392,6 +2431,19 @@
         </div>`;
       candidatePanel.querySelectorAll(".candidate-select").forEach(button => {
         button.addEventListener("click", () => selectCandidateForY1(cards[Number(button.dataset.i)], button));
+      });
+      candidatePanel.querySelectorAll(".candidate-angle").forEach(button => {
+        button.addEventListener("click", () => {
+          const parent = button.closest(".candidate-card");
+          const cardIndex = Number(parent?.querySelector(".candidate-select")?.dataset.i);
+          const angleIndex = Number(button.dataset.angleI);
+          const angle = cards[cardIndex]?.y0Analysis?.angles?.[angleIndex];
+          if (!parent || !angle) return;
+          parent.dataset.angleIndex = String(angleIndex);
+          parent.querySelectorAll(".candidate-angle").forEach(item => item.classList.toggle("active", item === button));
+          const input = parent.querySelector(".candidate-query");
+          if (input) input.value = angle.searchQuery;
+        });
       });
       candidatePanel.querySelectorAll(".candidate-view").forEach(button => {
         const card = cards[Number(button.dataset.i)];
