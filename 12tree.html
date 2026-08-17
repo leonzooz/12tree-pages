@@ -967,12 +967,21 @@
       box-shadow: var(--shadow-sunken); display: grid; gap: var(--space-2);
       font-size: 11px; color: var(--text-secondary); line-height: 1.45;
     }
+    .candidate-report-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+    .candidate-report-head strong { color: var(--ink); font-size: 11px; }
+    .candidate-report-head span { color: var(--soft); font: 9px/1.3 ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .candidate-report-section { padding: var(--space-2); border-radius: var(--radius-sm); background: var(--card); box-shadow: var(--shadow-soft); }
+    .candidate-report-section + .candidate-report-section { margin-top: var(--space-1); }
+    .candidate-report-lang { margin-bottom: var(--space-1); color: var(--cool-ink); font-size: 8.5px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+    .candidate-report-section.zh .candidate-report-lang { color: var(--warm-ink); }
     .candidate-next pre {
-      margin: 0; max-height: 120px; overflow: auto; white-space: pre-wrap;
+      margin: 0; max-height: 190px; overflow: auto; white-space: pre-wrap;
       font: 11px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace;
       color: var(--text-tertiary);
     }
     .candidate-next .candidate-select { margin-top: 0; }
+    .candidate-view { margin-top: 6px; width: 100%; border: 1px solid var(--cool); background: var(--card); color: var(--cool-ink); font: inherit; font-size: 10.5px; font-weight: 900; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+    .candidate-view:hover { border-color: var(--cool-ink); }
   
     /* ---- 手機版 header 收合 ----
        截圖上 header 吃掉半個螢幕：data-tools 的 8 顆按鈕排成 4 排，
@@ -2220,9 +2229,30 @@
       const panel = document.createElement("div");
       panel.className = "candidate-next";
       const summary = run.result?.summary || "Y1 已完成，但沒有回傳摘要。";
-      panel.innerHTML = `<strong>Y1 Evidence Report</strong><pre>${escHtml(summary.split("\n").slice(0, 12).join("\n"))}</pre><button class="candidate-select y2-send" type="button">送 Y2 Appraisal</button>`;
+      const view = run.result?.bilingualView || run.result?.result?.bilingualView || {};
+      const english = view.english || `Topic: ${card.topic}\nSearch query: ${card.searchQuery || card.topic}\n\nThe structured English evidence view is unavailable for this earlier run.`;
+      const chinese = view.chinese || summary;
+      panel.innerHTML = `<div class="candidate-report-head"><strong>本次生成資料</strong><span>${escHtml(run.task?.id || "Y1 result")}</span></div><div class="candidate-report-section en"><div class="candidate-report-lang">English · Original</div><pre>${escHtml(english)}</pre></div><div class="candidate-report-section zh"><div class="candidate-report-lang">中文 · 結構整理</div><pre>${escHtml(chinese)}</pre></div><button class="candidate-select y2-send" type="button">送 Y2 Appraisal</button>`;
       parent.appendChild(panel);
       panel.querySelector(".y2-send").addEventListener("click", () => dispatchY2Appraisal(card, run, panel.querySelector(".y2-send")));
+    }
+    async function reopenY1Result(card, task, button) {
+      const originalLabel = button.textContent;
+      button.disabled = true;
+      button.textContent = "載入中...";
+      try {
+        const data = await openclawFetch(`/api/results/task?taskId=${encodeURIComponent(task.id)}`);
+        const stored = data.result || {};
+        renderY1NextStep(card, button, {
+          task,
+          result: { ...stored, status: "completed", resultFile: data.resultFile, summary: stored.summary || "" }
+        });
+        button.textContent = originalLabel;
+      } catch (error) {
+        button.textContent = "結果讀取失敗";
+      } finally {
+        button.disabled = false;
+      }
     }
     async function dispatchY2Appraisal(card, y1Run, button) {
       button.disabled = true;
@@ -2356,11 +2386,17 @@
               <div class="candidate-action">${escHtml(card.defaultAction || "交給 Y1 複查")}</div>
               <label class="candidate-query-label">Y1 搜尋題目<input class="candidate-query" type="text" value="${escHtml(card.searchQuery || card.topic)}" aria-label="${escHtml(card.topic)} 的 Y1 搜尋題目"></label>
               <button class="candidate-select" type="button" data-i="${index}"${running ? " disabled" : ""}>${buttonLabel}</button>
+              ${y1Task?.status === "completed" ? `<button class="candidate-view" type="button" data-i="${index}" data-task-id="${escHtml(y1Task.id)}">${queryMatches ? "閱覽本次資料" : "閱覽舊查詢資料"}</button>` : ""}
             </article>`;
           }).join("")}
         </div>`;
       candidatePanel.querySelectorAll(".candidate-select").forEach(button => {
         button.addEventListener("click", () => selectCandidateForY1(cards[Number(button.dataset.i)], button));
+      });
+      candidatePanel.querySelectorAll(".candidate-view").forEach(button => {
+        const card = cards[Number(button.dataset.i)];
+        const task = latestY1TaskForCard(card, selectedDate);
+        button.addEventListener("click", () => reopenY1Result(card, task, button));
       });
     }
     async function loadPublishedCandidateCards(date) {
